@@ -1,0 +1,28 @@
+# dependencies
+/node_modules/
+/.npm-cache/
+
+# Next.js
+/.next/
+/out/
+
+# local environment
+.env
+.env*.local
+
+# logs and editor files
+*.log
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+
+# private, short-lived upload data
+/.private/
+
+# local data and agent working notes
+/imports/
+/task_plan.md
+/findings.md
+/progress.md

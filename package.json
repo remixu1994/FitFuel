@@ -1,0 +1,42 @@
+{
+  "name": "fitfuel-web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "prisma generate",
+    "prebuild": "prisma generate",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "prisma:generate": "prisma generate",
+    "prisma:pull": "prisma db pull",
+    "db:inspect": "node --env-file-if-exists=.env.local scripts/inspect-db.mjs",
+    "db:init": "node --env-file-if-exists=.env.local scripts/init-db.mjs",
+    "db:verify": "node --env-file-if-exists=.env.local scripts/verify-db.mjs",
+    "db:migrate:fitfuel": "node --env-file-if-exists=.env.local scripts/migrate-to-fitfuel.mjs",
+    "db:verify:fitfuel": "node --env-file-if-exists=.env.local scripts/verify-target-db.mjs",
+    "test:smoke": "node --env-file-if-exists=.env.local scripts/smoke-test.mjs",
+    "test:smoke:cleanup": "node --env-file-if-exists=.env.local scripts/cleanup-smoke-data.mjs"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "argon2": "^0.45.1",
+    "exceljs": "^4.4.0",
+    "lucide-react": "^0.468.0",
+    "next": "^15.1.4",
+    "pg": "^8.22.0",
+    "prisma": "^6.19.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "@types/pg": "^8.20.0",
+    "@types/react": "^19.0.3",
+    "@types/react-dom": "^19.0.2",
+    "tsx": "^4.23.1",
+    "typescript": "^5.7.2"
+  }
+}

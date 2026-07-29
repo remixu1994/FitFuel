@@ -1,0 +1,460 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["fitfuel", "food_info"]
+}
+
+model ai_food_lookup {
+  normalized_query String   @id @db.VarChar(200)
+  food_id          Int
+  model            String   @db.VarChar(80)
+  confidence       Decimal? @db.Decimal(5, 4)
+  created_by       BigInt
+  created_at       DateTime @default(now()) @db.Timestamptz(6)
+  app_user         app_user @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  food             food     @relation(fields: [food_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model app_user {
+  id                      BigInt                    @id @default(autoincrement())
+  email                   String?                   @unique @db.VarChar(320)
+  display_name            String                    @db.VarChar(100)
+  password_hash           String?
+  status                  Int                       @default(1) @db.SmallInt
+  created_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                  @default(now()) @db.Timestamptz(6)
+  role                    String                    @default("user") @db.VarChar(16)
+  last_login_at           DateTime?                 @db.Timestamptz(6)
+  must_change_password    Boolean                   @default(false)
+  password_changed_at     DateTime?                 @db.Timestamptz(6)
+  created_by              BigInt?
+  ai_food_lookup          ai_food_lookup[]
+  app_user                app_user?                 @relation("app_userToapp_user", fields: [created_by], references: [id], onUpdate: NoAction)
+  other_app_user          app_user[]                @relation("app_userToapp_user")
+  auth_session            auth_session[]
+  custom_food             custom_food[]
+  daily_data_import_batch daily_data_import_batch[]
+  elevatine_import_batch  elevatine_import_batch[]
+  daily_record            daily_record[]
+  food_catalog_audit      food_catalog_audit[]
+  nutrition_goal          nutrition_goal[]
+  user_profile            user_profile?
+  water_log               water_log[]
+
+  @@schema("fitfuel")
+}
+
+model auth_session {
+  id           BigInt   @id @default(autoincrement())
+  user_id      BigInt
+  token_hash   String   @unique @db.Char(64)
+  expires_at   DateTime @db.Timestamptz(6)
+  created_at   DateTime @default(now()) @db.Timestamptz(6)
+  last_seen_at DateTime @default(now()) @db.Timestamptz(6)
+  app_user     app_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([expires_at], map: "ix_auth_session_expiry")
+  @@index([user_id], map: "ix_auth_session_user")
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model custom_food {
+  id            BigInt      @id @default(autoincrement())
+  user_id       BigInt
+  name          String      @db.VarChar(200)
+  brand         String?     @db.VarChar(120)
+  serving_name  String      @default("100g") @db.VarChar(60)
+  gram_weight   Decimal     @default(100) @db.Decimal(10, 3)
+  calories      Decimal     @db.Decimal(10, 2)
+  protein       Decimal     @default(0) @db.Decimal(10, 2)
+  carbohydrate  Decimal     @default(0) @db.Decimal(10, 2)
+  fat           Decimal     @default(0) @db.Decimal(10, 2)
+  dietary_fiber Decimal     @default(0) @db.Decimal(10, 2)
+  created_at    DateTime    @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime    @default(now()) @db.Timestamptz(6)
+  deleted_at    DateTime?   @db.Timestamptz(6)
+  app_user      app_user    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  meal_item     meal_item[]
+
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model daily_record {
+  id                      BigInt                   @id @default(autoincrement())
+  user_id                 BigInt
+  record_date             DateTime                 @db.Date
+  weight_kg               Decimal?                 @db.Decimal(5, 2)
+  calories_consumed       Int                      @default(0)
+  activity_calories       Decimal                  @default(0) @db.Decimal(10, 2)
+  bmr                     Decimal                  @default(0) @db.Decimal(8, 2)
+  tef                     Decimal                  @default(0) @db.Decimal(8, 2)
+  tdee                    Decimal                  @default(0) @db.Decimal(8, 2)
+  calorie_balance         Decimal                  @default(0) @db.Decimal(8, 2)
+  note                    String?
+  created_at              DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                 @default(now()) @db.Timestamptz(6)
+  deleted_at              DateTime?                @db.Timestamptz(6)
+  calories_source         String                   @default("manual") @db.VarChar(16)
+  meal_calories           Int                      @default(0)
+  manual_calories         Int?
+  imported_calories       Int?
+  import_batch_id         BigInt?
+  elevatine_calories      Int?
+  elevatine_carbohydrate  Decimal?                 @db.Decimal(8, 2)
+  elevatine_protein       Decimal?                 @db.Decimal(8, 2)
+  elevatine_fat           Decimal?                 @db.Decimal(8, 2)
+  macro_source            String                   @default("meals") @db.VarChar(16)
+  elevatine_batch_id      BigInt?
+  app_user                app_user                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  daily_data_import_batch daily_data_import_batch? @relation(fields: [import_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  elevatine_import_batch  elevatine_import_batch?  @relation(fields: [elevatine_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  meal                    meal[]
+
+  @@unique([user_id, record_date])
+  @@index([user_id, record_date(sort: Desc)], map: "ix_daily_record_user_date")
+  @@schema("fitfuel")
+}
+
+model daily_data_import_batch {
+  id                    BigInt                  @id @default(autoincrement())
+  user_id               BigInt
+  file_name             String                  @db.VarChar(255)
+  file_format           String                  @db.VarChar(8)
+  file_sha256           String                  @db.Char(64)
+  status                String                  @default("preview") @db.VarChar(16)
+  row_count             Int                     @default(0)
+  committed_at          DateTime?               @db.Timestamptz(6)
+  rolled_back_at        DateTime?               @db.Timestamptz(6)
+  expires_at            DateTime                @default(dbgenerated("(now() + '24:00:00'::interval)")) @db.Timestamptz(6)
+  created_at            DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime                @default(now()) @db.Timestamptz(6)
+  app_user              app_user                @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  daily_data_import_row daily_data_import_row[]
+  daily_record          daily_record[]
+
+  @@index([user_id, created_at(sort: Desc)], map: "ix_daily_data_import_batch_user_time")
+  @@schema("fitfuel")
+}
+
+model daily_data_import_row {
+  id                         BigInt                  @id @default(autoincrement())
+  batch_id                   BigInt
+  record_date                DateTime                @db.Date
+  imported_calories          Int
+  imported_activity_calories Decimal                 @db.Decimal(10, 2)
+  imported_weight_kg         Decimal                 @db.Decimal(5, 2)
+  selected_source            String?                 @db.VarChar(16)
+  use_imported_weight        Boolean                 @default(false)
+  use_imported_activity      Boolean                 @default(false)
+  before_snapshot            Json?
+  after_updated_at           DateTime?               @db.Timestamptz(6)
+  created_at                 DateTime                @default(now()) @db.Timestamptz(6)
+  daily_data_import_batch    daily_data_import_batch @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([batch_id, record_date])
+  @@index([batch_id, record_date], map: "ix_daily_data_import_row_batch")
+  @@schema("fitfuel")
+}
+
+model data_import {
+  import_key      String   @id @db.VarChar(80)
+  source_database String   @db.VarChar(80)
+  source_snapshot Json
+  imported_at     DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model food_catalog_audit {
+  id            BigInt   @id @default(autoincrement())
+  food_id       Int?
+  action        String   @db.VarChar(32)
+  query         String?  @db.VarChar(200)
+  model         String?  @db.VarChar(80)
+  confidence    Decimal? @db.Decimal(5, 4)
+  raw_candidate Json?
+  final_values  Json?
+  actor_user_id BigInt
+  created_at    DateTime @default(now()) @db.Timestamptz(6)
+  app_user      app_user @relation(fields: [actor_user_id], references: [id], onUpdate: NoAction)
+  food          food?    @relation(fields: [food_id], references: [id], onUpdate: NoAction)
+
+  @@index([food_id, created_at(sort: Desc)], map: "ix_food_catalog_audit_food")
+  @@schema("fitfuel")
+}
+
+model meal {
+  id                     BigInt                  @id @default(autoincrement())
+  daily_record_id        BigInt
+  meal_type              String                  @db.VarChar(24)
+  display_name           String                  @db.VarChar(60)
+  sort_order             Int                     @default(0) @db.SmallInt
+  consumed_at            DateTime?               @db.Timestamptz(6)
+  created_at             DateTime                @default(now()) @db.Timestamptz(6)
+  deleted_at             DateTime?               @db.Timestamptz(6)
+  source                 String                  @default("manual") @db.VarChar(16)
+  elevatine_batch_id     BigInt?
+  daily_record           daily_record            @relation(fields: [daily_record_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  elevatine_import_batch elevatine_import_batch? @relation(fields: [elevatine_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  meal_item              meal_item[]
+
+  @@index([daily_record_id, sort_order], map: "ix_meal_daily_record")
+  @@schema("fitfuel")
+}
+
+model elevatine_import_batch {
+  id                     BigInt                   @id @default(autoincrement())
+  user_id                BigInt
+  status                 String                   @default("uploaded") @db.VarChar(20)
+  default_year           Int                      @db.SmallInt
+  image_count            Int                      @default(0)
+  committed_at           DateTime?                @db.Timestamptz(6)
+  rolled_back_at         DateTime?                @db.Timestamptz(6)
+  expires_at             DateTime                 @default(dbgenerated("(now() + '24:00:00'::interval)")) @db.Timestamptz(6)
+  created_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                 @default(now()) @db.Timestamptz(6)
+  app_user               app_user                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  daily_record           daily_record[]
+  elevatine_import_day   elevatine_import_day[]
+  elevatine_import_image elevatine_import_image[]
+  meal                   meal[]
+
+  @@index([user_id, created_at(sort: Desc)], map: "ix_elevatine_batch_user_time")
+  @@schema("fitfuel")
+}
+
+model elevatine_import_image {
+  id                     BigInt                  @id @default(autoincrement())
+  batch_id               BigInt
+  file_name              String                  @db.VarChar(255)
+  storage_key            String                  @db.VarChar(500)
+  sha256                 String                  @db.Char(64)
+  mime_type              String                  @db.VarChar(40)
+  size_bytes             Int
+  status                 String                  @default("uploaded") @db.VarChar(16)
+  image_kind             String                  @default("unknown") @db.VarChar(16)
+  parsed_json            Json?
+  confidence             Decimal?                @db.Decimal(5, 4)
+  error_message          String?
+  assigned_date          DateTime?               @db.Date
+  created_at             DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                @default(now()) @db.Timestamptz(6)
+  elevatine_import_batch elevatine_import_batch  @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  elevatine_import_item  elevatine_import_item[]
+
+  @@unique([batch_id, sha256])
+  @@index([batch_id, id], map: "ix_elevatine_image_batch")
+  @@schema("fitfuel")
+}
+
+model elevatine_import_day {
+  id                     BigInt                  @id @default(autoincrement())
+  batch_id               BigInt
+  record_date            DateTime                @db.Date
+  selected               Boolean                 @default(true)
+  calories               Int
+  carbohydrate           Decimal?                @db.Decimal(8, 2)
+  protein                Decimal?                @db.Decimal(8, 2)
+  fat                    Decimal?                @db.Decimal(8, 2)
+  calories_goal          Int?
+  carbohydrate_goal      Decimal?                @db.Decimal(8, 2)
+  protein_goal           Decimal?                @db.Decimal(8, 2)
+  fat_goal               Decimal?                @db.Decimal(8, 2)
+  warnings               Json?
+  before_snapshot        Json?
+  after_updated_at       DateTime?               @db.Timestamptz(6)
+  created_at             DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                @default(now()) @db.Timestamptz(6)
+  elevatine_import_batch elevatine_import_batch  @relation(fields: [batch_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  elevatine_import_item  elevatine_import_item[]
+
+  @@unique([batch_id, record_date])
+  @@index([batch_id, record_date], map: "ix_elevatine_day_batch")
+  @@schema("fitfuel")
+}
+
+model elevatine_import_item {
+  id                     BigInt                  @id @default(autoincrement())
+  day_id                 BigInt?
+  image_id               BigInt?
+  meal_label             String                  @default("第 1 餐") @db.VarChar(60)
+  meal_order             Int                     @default(1) @db.SmallInt
+  meal_time              String?                 @db.VarChar(8)
+  food_name              String                  @db.VarChar(200)
+  quantity               Decimal?                @db.Decimal(10, 3)
+  unit                   String?                 @db.VarChar(32)
+  calories               Decimal                 @db.Decimal(10, 2)
+  carbohydrate           Decimal?                @db.Decimal(10, 2)
+  protein                Decimal?                @db.Decimal(10, 2)
+  fat                    Decimal?                @db.Decimal(10, 2)
+  confidence             Decimal?                @db.Decimal(5, 4)
+  selected               Boolean                 @default(true)
+  match_status           String                  @default("matched") @db.VarChar(16)
+  dedupe_key             String                  @db.VarChar(500)
+  created_at             DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime                @default(now()) @db.Timestamptz(6)
+  elevatine_import_day   elevatine_import_day?   @relation(fields: [day_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  elevatine_import_image elevatine_import_image? @relation(fields: [image_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([day_id, meal_order, id], map: "ix_elevatine_item_day")
+  @@index([image_id], map: "ix_elevatine_item_image")
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model meal_item {
+  id                     BigInt       @id @default(autoincrement())
+  meal_id                BigInt
+  food_id                Int?
+  food_name_snapshot     String       @db.VarChar(200)
+  quantity               Decimal      @db.Decimal(10, 3)
+  unit                   String       @db.VarChar(32)
+  gram_weight            Decimal?     @db.Decimal(10, 3)
+  calories_snapshot      Decimal      @db.Decimal(10, 2)
+  protein_snapshot       Decimal      @default(0) @db.Decimal(10, 2)
+  carbohydrate_snapshot  Decimal      @default(0) @db.Decimal(10, 2)
+  fat_snapshot           Decimal      @default(0) @db.Decimal(10, 2)
+  dietary_fiber_snapshot Decimal      @default(0) @db.Decimal(10, 2)
+  source                 String       @default("database") @db.VarChar(16)
+  created_at             DateTime     @default(now()) @db.Timestamptz(6)
+  custom_food_id         BigInt?
+  deleted_at             DateTime?    @db.Timestamptz(6)
+  updated_at             DateTime     @default(now()) @db.Timestamptz(6)
+  custom_food            custom_food? @relation(fields: [custom_food_id], references: [id], onUpdate: NoAction)
+  food                   food?        @relation(fields: [food_id], references: [id], onUpdate: NoAction)
+  meal                   meal         @relation(fields: [meal_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([custom_food_id], map: "ix_meal_item_custom_food")
+  @@index([food_id], map: "ix_meal_item_food")
+  @@index([meal_id], map: "ix_meal_item_meal")
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model nutrition_goal {
+  id             BigInt    @id @default(autoincrement())
+  user_id        BigInt
+  goal_type      String    @db.VarChar(16)
+  calories_kcal  Int
+  protein_g      Decimal   @db.Decimal(7, 2)
+  carbohydrate_g Decimal   @db.Decimal(7, 2)
+  fat_g          Decimal   @db.Decimal(7, 2)
+  water_ml       Int       @default(2000)
+  effective_from DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  effective_to   DateTime? @db.Date
+  created_at     DateTime  @default(now()) @db.Timestamptz(6)
+  app_user       app_user  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("fitfuel")
+}
+
+model schema_migration {
+  version    String   @id @db.VarChar(64)
+  applied_at DateTime @default(now()) @db.Timestamptz(6)
+
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model user_profile {
+  user_id           BigInt   @id
+  height_cm         Decimal  @db.Decimal(5, 2)
+  age               Int      @db.SmallInt
+  gender            String   @db.VarChar(16)
+  initial_weight_kg Decimal  @db.Decimal(5, 2)
+  target_weight_kg  Decimal  @db.Decimal(5, 2)
+  activity_level    String   @default("moderate") @db.VarChar(24)
+  timezone          String   @default("Asia/Shanghai") @db.VarChar(64)
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime @default(now()) @db.Timestamptz(6)
+  app_user          app_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("fitfuel")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model water_log {
+  id         BigInt    @id @default(autoincrement())
+  user_id    BigInt
+  amount_ml  Int
+  logged_at  DateTime  @default(now()) @db.Timestamptz(6)
+  deleted_at DateTime? @db.Timestamptz(6)
+  app_user   app_user  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id, logged_at(sort: Desc)], map: "ix_water_log_user_time")
+  @@schema("fitfuel")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model food {
+  id                 Int                  @id @default(autoincrement())
+  name               String               @db.VarChar(255)
+  category_id        Int?
+  brand              String?              @db.VarChar(255)
+  description        String?
+  image_url          String?
+  status             Int?                 @default(1)
+  created_at         DateTime?            @default(now()) @db.Timestamp(6)
+  updated_at         DateTime?            @default(now()) @db.Timestamp(6)
+  ai_food_lookup     ai_food_lookup[]
+  food_catalog_audit food_catalog_audit[]
+  meal_item          meal_item[]
+  food_category      food_category?       @relation(fields: [category_id], references: [id], onUpdate: NoAction)
+  food_nutrition     food_nutrition[]
+  food_serving       food_serving[]
+
+  @@schema("food_info")
+}
+
+model food_category {
+  id         Int    @id @default(autoincrement())
+  parent_id  Int?   @default(0)
+  name       String @db.VarChar(255)
+  sort_order Int?   @default(0)
+  food       food[]
+
+  @@schema("food_info")
+}
+
+model food_nutrition {
+  id            Int     @id @default(autoincrement())
+  food_id       Int
+  unit          String? @default("100g") @db.VarChar(64)
+  calories      Float   @db.Real
+  protein       Float?  @default(0) @db.Real
+  fat           Float?  @default(0) @db.Real
+  carbohydrate  Float?  @default(0) @db.Real
+  dietary_fiber Float?  @default(0) @db.Real
+  sugar         Float?  @default(0) @db.Real
+  sodium        Float?  @default(0) @db.Real
+  cholesterol   Float?  @default(0) @db.Real
+  food          food    @relation(fields: [food_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([food_id, unit])
+  @@index([food_id], map: "ix_food_nutrition_food")
+  @@schema("food_info")
+}
+
+model food_serving {
+  id           Int     @id @default(autoincrement())
+  food_id      Int
+  serving_name String  @db.VarChar(255)
+  gram_weight  Float   @db.Real
+  unit_type    String? @default("g") @db.VarChar(32)
+  is_default   Int?    @default(0)
+  food         food    @relation(fields: [food_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([food_id], map: "ix_food_serving_food")
+  @@schema("food_info")
+}

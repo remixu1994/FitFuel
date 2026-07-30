@@ -33,3 +33,15 @@ Status: **PASSED**
 ## Open differences
 
 - None at P0–P2 severity.
+
+## Image food entry
+
+- Reference: the user-provided Elavatine “南瓜馒头” food-detail screenshot.
+- Implemented entry point: `/settings` → `私人食品` → `图片识别`.
+- Verified upload, MiMo parsing, editable review, calorie-source ratios, disabled/loading states, and the final private-food save action.
+- Recognition result matched the reference: `南瓜馒头`, `100 g`, `220 kcal`, carbohydrate `43.6 g`, protein `9.1 g`, and fat `1.5 g`.
+- Visual QA compared the reference and implementation side by side at the same mobile viewport/state. Dark background, card hierarchy, nutrient grid, source proportions, rounded corners, and fixed blue action all passed.
+- Desktop drawer and mobile full-width layouts passed without console errors.
+- The source image is processed ephemerally and is not persisted; no record is written before user confirmation.
+
+final result: passed

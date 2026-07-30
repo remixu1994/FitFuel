@@ -27,7 +27,7 @@ async function main() {
     || record.calories_consumed !== record.elevatine_calories
   );
   const batches = await prisma.elevatine_import_batch.findMany({
-    where: { id: { in: [1n, 2n, 3n] } },
+    where: { id: { in: [BigInt(1), BigInt(2), BigInt(3)] } },
     select: { id: true, status: true, image_count: true, committed_at: true }
   });
   console.log(JSON.stringify({

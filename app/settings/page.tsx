@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle, ArrowLeft, Check, CheckCircle2, CookingPot, Dumbbell, History, ImagePlus,
-  Leaf, LoaderCircle, Plus, RefreshCcw, Save, Sparkles, Target, Trash2, UserRound,
+  Leaf, LoaderCircle, Plus, RefreshCcw, Save, Sparkles, Target, Trash2,
   Wheat, X
 } from "lucide-react";
 import { api } from "@/lib/client";
+import { AppSidebar } from "@/components/AppSidebar";
 
 type Profile={email:string;display_name:string;height_cm:number;age:number;gender:string;initial_weight_kg:number;target_weight_kg:number};
 type Goal={goal_type:string;calories_kcal:number;protein_g:number;carbohydrate_g:number;fat_g:number;water_ml:number};
@@ -21,9 +22,9 @@ type Trash={id:number;name:string;type:string;deleted_at:string};
 type ImportBatch={id:number;fileName:string;format:string;status:string;rowCount:number;createdAt:string;committedAt:string|null;rolledBackAt:string|null;expiresAt:string};
 type Tab="profile"|"goal"|"foods"|"imports"|"trash";
 const manageTabs = [
-  { value:"profile" as Tab, Icon:UserRound, label:"个人资料" },
-  { value:"goal" as Tab, Icon:Target, label:"营养目标" },
-  { value:"foods" as Tab, Icon:CookingPot, label:"私人食品" },
+  { value:"profile" as Tab, Icon:Dumbbell, label:"身体数据" },
+  { value:"goal" as Tab, Icon:Target, label:"目标设置" },
+  { value:"foods" as Tab, Icon:CookingPot, label:"食物维护" },
   { value:"imports" as Tab, Icon:History, label:"导入历史" },
   { value:"trash" as Tab, Icon:Trash2, label:"回收站" }
 ];
@@ -59,7 +60,15 @@ export default function SettingsPage(){
     }catch(error){setError(error instanceof Error?error.message:"加载失败");}
     finally{setLoading(false);}
   }
-  useEffect(()=>{void load();},[]);
+  useEffect(()=>{
+    const requested=new URLSearchParams(window.location.search).get("tab");
+    if(manageTabs.some(item=>item.value===requested))setTab(requested as Tab);
+    void load();
+  },[]);
+  function selectTab(value:Tab){
+    setTab(value);
+    window.history.replaceState(null,"",`/settings?tab=${value}`);
+  }
   const success=(text:string)=>{setMessage(text);setTimeout(()=>setMessage(""),2500);};
   async function saveProfile(){
     if(!profile)return;setSaving(true);setError("");
@@ -136,29 +145,31 @@ export default function SettingsPage(){
   const goalField=(key:keyof Goal,value:string|number)=>setGoal(current=>current?{...current,[key]:value}:current);
   const foodField=(key:keyof CustomFood,value:string|number)=>setEditor(current=>({...current,[key]:value}));
 
-  return <main className="manage-page">
-    <header className="manage-header"><button onClick={()=>router.push("/")}><ArrowLeft/></button><div className="manage-brand"><Leaf fill="currentColor"/><strong>FitFuel</strong></div><div><p>DATA MANAGEMENT</p><h1>数据维护</h1></div></header>
+  return <div className="app-shell settings-shell">
+    <AppSidebar/>
+    <main className="manage-page">
+    <header className="manage-header settings-workspace-header"><div><p>SETTINGS</p><h1>设置中心</h1><span>集中管理身体资料、营养目标和个人数据</span></div></header>
     <div className="manage-layout">
-      <aside className="manage-nav"><p>账户与数据</p>{manageTabs.map(({value,Icon,label})=><button key={value} className={tab===value?"active":""} onClick={()=>setTab(value)}><Icon size={17}/>{label}{value==="trash"&&trash.length>0?<i>{trash.length}</i>:null}</button>)}</aside>
+      <aside className="manage-nav"><p>设置与数据</p>{manageTabs.map(({value,Icon,label})=><button key={value} className={tab===value?"active":""} onClick={()=>selectTab(value)}><Icon size={17}/>{label}{value==="trash"&&trash.length>0?<i>{trash.length}</i>:null}</button>)}</aside>
       <section className="manage-content">
         {message&&<div className="global-message success"><Check/> {message}</div>}
         {error&&<div className="global-message error">{error}<button onClick={()=>setError("")}><X/></button></div>}
         {loading?<div className="page-loading"><LoaderCircle/> 正在加载你的数据…</div>:<>
-          {tab==="profile"&&profile&&<div className="manage-section"><div className="manage-title"><span>PROFILE</span><h2>个人资料</h2><p>用于计算基础代谢和目标进度。</p></div><div className="manage-form">
+          {tab==="profile"&&profile&&<div className="manage-section"><div className="manage-title"><span>BODY & PROFILE</span><h2>身体数据</h2><p>维护账户资料、身高、年龄和体重，用于计算基础代谢与目标进度。</p></div><div className="manage-form">
             <label>登录邮箱<input value={profile.email} disabled/></label><label>昵称<input value={profile.display_name} onChange={e=>field("display_name",e.target.value)}/></label>
             <div className="form-pair"><label>身高（cm）<input type="number" value={profile.height_cm} onChange={e=>field("height_cm",+e.target.value)}/></label><label>年龄<input type="number" value={profile.age} onChange={e=>field("age",+e.target.value)}/></label></div>
             <label>性别<select value={profile.gender} onChange={e=>field("gender",e.target.value)}><option value="male">男性</option><option value="female">女性</option><option value="other">其他</option></select></label>
             <div className="form-pair"><label>初始体重（kg）<input type="number" step=".1" value={profile.initial_weight_kg} onChange={e=>field("initial_weight_kg",+e.target.value)}/></label><label>目标体重（kg）<input type="number" step=".1" value={profile.target_weight_kg} onChange={e=>field("target_weight_kg",+e.target.value)}/></label></div>
             <button className="manage-save" disabled={saving} onClick={saveProfile}><Save/> 保存资料</button>
           </div></div>}
-          {tab==="goal"&&goal&&<div className="manage-section"><div className="manage-title"><span>DAILY TARGET</span><h2>营养目标</h2><p>首页的进度环会立即使用新的目标。</p></div><div className="manage-form">
+          {tab==="goal"&&goal&&<div className="manage-section"><div className="manage-title"><span>DAILY TARGET</span><h2>目标设置</h2><p>设置每日热量、三大营养素和饮水目标，首页进度环会立即更新。</p></div><div className="manage-form">
             <label>目标类型<select value={goal.goal_type} onChange={e=>goalField("goal_type",e.target.value)}><option value="cut">减脂</option><option value="gain">增肌</option><option value="maintain">维持</option></select></label>
             <label>每日热量（kcal）<input type="number" value={goal.calories_kcal} onChange={e=>goalField("calories_kcal",+e.target.value)}/></label>
             <div className="form-pair"><label>蛋白质（g）<input type="number" value={goal.protein_g} onChange={e=>goalField("protein_g",+e.target.value)}/></label><label>碳水（g）<input type="number" value={goal.carbohydrate_g} onChange={e=>goalField("carbohydrate_g",+e.target.value)}/></label></div>
             <div className="form-pair"><label>脂肪（g）<input type="number" value={goal.fat_g} onChange={e=>goalField("fat_g",+e.target.value)}/></label><label>饮水量（ml）<input type="number" value={goal.water_ml} onChange={e=>goalField("water_ml",+e.target.value)}/></label></div>
             <button className="manage-save" disabled={saving} onClick={saveGoal}><Save/> 更新目标</button>
           </div></div>}
-          {tab==="foods"&&<div className="manage-section wide"><div className="manage-title row"><div><span>PERSONAL LIBRARY</span><h2>私人食品</h2><p>共享 food_info 由管理员维护，这里的食品仅你可见。</p></div><div className="manage-title-actions"><button className="image-food-trigger" onClick={()=>setImageFoodOpen(true)}><ImagePlus/> 图片识别</button><button onClick={()=>setEditor({name:"",serving_name:"100g",gram_weight:100,calories:0,protein:0,carbohydrate:0,fat:0,dietary_fiber:0})}><Plus/> 创建食品</button></div></div>
+          {tab==="foods"&&<div className="manage-section wide"><div className="manage-title row"><div><span>PERSONAL LIBRARY</span><h2>食物维护</h2><p>维护仅自己可见的私人食品；共享 food_info 仍由管理员管理。</p></div><div className="manage-title-actions"><button className="image-food-trigger" onClick={()=>setImageFoodOpen(true)}><ImagePlus/> 图片识别</button><button onClick={()=>setEditor({name:"",serving_name:"100g",gram_weight:100,calories:0,protein:0,carbohydrate:0,fat:0,dietary_fiber:0})}><Plus/> 创建食品</button></div></div>
             <div className="food-maintain-list">{foods.length?foods.map(food=><div key={food.id}><span className="food-dot">★</span><div><b>{food.name}</b><small>{food.brand||"私人食品"} · {food.serving_name}</small></div><span>{food.calories} kcal</span><span>P {food.protein}g</span><button onClick={()=>setEditor(food)}>编辑</button><button className="danger" onClick={()=>removeFood(food.id)}><Trash2/></button></div>):<div className="manage-empty"><CookingPot/><b>还没有私人食品</b><span>创建常吃的品牌食品或自制餐食。</span></div>}</div>
           </div>}
           {tab==="imports"&&<div className="manage-section wide"><div className="manage-title"><span>IMPORT AUDIT</span><h2>导入历史</h2><p>查看文件、处理状态与审计时间；仅最近一个有效批次可安全撤销。</p></div>
@@ -210,7 +221,8 @@ export default function SettingsPage(){
       <div className="form-pair"><label>脂肪（g）<div><input type="number" value={editor.fat??0} onChange={e=>foodField("fat",+e.target.value)}/></div></label><label>膳食纤维（g）<div><input type="number" value={editor.dietary_fiber??0} onChange={e=>foodField("dietary_fiber",+e.target.value)}/></div></label></div>
       <button className="save-record" disabled={saving} onClick={saveFood}>{saving?"正在保存…":"保存私人食品"}</button>
     </aside></div>}
-  </main>;
+    </main>
+  </div>;
 }
 
 function typeLabel(type:string){return {custom_food:"私人食品",meal_item:"餐食记录",daily_record:"每日记录",water:"饮水记录"}[type]??type}

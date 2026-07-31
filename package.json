@@ -16,12 +16,17 @@
     "db:verify": "node --env-file-if-exists=.env.local scripts/verify-db.mjs",
     "db:migrate:fitfuel": "node --env-file-if-exists=.env.local scripts/migrate-to-fitfuel.mjs",
     "db:verify:fitfuel": "node --env-file-if-exists=.env.local scripts/verify-target-db.mjs",
+    "data:enrich:elevatine": "tsx --env-file=.env.local scripts/enrich-elevatine-foods.ts",
+    "coros:login:test": "tsx --env-file=.env.local scripts/test-coros-login.ts",
+    "coros:sync": "tsx --env-file=.env.local scripts/sync-coros-activities.ts",
+    "coros:sync:verify": "tsx --env-file=.env.local scripts/verify-coros-sync.ts",
     "test:smoke": "node --env-file-if-exists=.env.local scripts/smoke-test.mjs",
     "test:smoke:cleanup": "node --env-file-if-exists=.env.local scripts/cleanup-smoke-data.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
     "argon2": "^0.45.1",
+    "bcryptjs": "^3.0.3",
     "exceljs": "^4.4.0",
     "lucide-react": "^0.468.0",
     "next": "^15.1.4",

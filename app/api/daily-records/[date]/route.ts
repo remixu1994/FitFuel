@@ -14,7 +14,7 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
     const [record, goal, profile, meals, water] = await Promise.all([
       db.query(
         `select id,record_date,weight_kg,calories_consumed,meal_calories,manual_calories,
-                imported_calories,activity_calories,bmr,tef,tdee,
+                imported_calories,activity_calories,coros_activity_calories,activity_source,bmr,tef,tdee,
                 calorie_balance,note,calories_source,macro_source,elevatine_calories,
                 elevatine_carbohydrate,elevatine_protein,elevatine_fat,elevatine_batch_id
          from fitfuel.daily_record where user_id=$1 and record_date=$2::date and deleted_at is null`,
@@ -33,6 +33,7 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
       db.query(
         `select m.id as meal_id,m.meal_type,m.display_name,m.sort_order,m.source,
                 mi.id as item_id,mi.food_name_snapshot,mi.quantity,mi.unit,
+                mi.gram_weight,mi.source as item_source,
                 mi.calories_snapshot,mi.protein_snapshot,mi.carbohydrate_snapshot,
                 mi.fat_snapshot,mi.dietary_fiber_snapshot
          from fitfuel.meal m
@@ -59,6 +60,7 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
       });
       if (row.item_id) (grouped.get(row.meal_id)!.items as unknown[]).push({
         id: row.item_id, name: row.food_name_snapshot, quantity: row.quantity, unit: row.unit,
+        gramWeight: row.gram_weight, source: row.item_source,
         calories: row.calories_snapshot, protein: row.protein_snapshot,
         carbohydrate: row.carbohydrate_snapshot, fat: row.fat_snapshot,
         dietaryFiber: row.dietary_fiber_snapshot

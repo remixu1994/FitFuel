@@ -70,7 +70,7 @@ alter table fitfuel.daily_record
 
 alter table fitfuel.daily_record
   add constraint daily_record_calories_source_check
-  check (calories_source in ('meals', 'manual', 'import'));
+  check (calories_source in ('meals', 'manual', 'import', 'elevatine'));
 
 alter table fitfuel.daily_record
   drop constraint if exists daily_record_meal_calories_check;

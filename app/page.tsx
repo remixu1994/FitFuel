@@ -5,16 +5,18 @@ import { useRouter } from "next/navigation";
 import {
   Apple, BarChart3, Bell, Bot, CalendarDays, ChevronLeft, ChevronRight, ClipboardList,
   CookingPot, Droplets, Dumbbell, Ellipsis, Flame, GlassWater, Heart, Leaf, LoaderCircle,
-  LogOut, Menu, Moon, Plus, ScanLine, Search, Settings, ShieldCheck, Sparkles, Sun, Target, Trash2, X, Zap
+  LogOut, Menu, Moon, Pencil, Plus, Save, ScanLine, Search, Settings, ShieldCheck,
+  Sparkles, Sun, Trash2, X, Zap
 } from "lucide-react";
 import { api, chinaDate, shiftDate } from "@/lib/client";
+import { AppSidebar } from "@/components/AppSidebar";
 
 type Food = {
   key:string;name:string;brand?:string;serving:string;gram_weight:number;calories:number;
   protein:number;carbohydrate:number;fat:number;dietary_fiber:number;source:string;
   confidence?:number;reason?:string;candidateToken?:string;
 };
-type MealItem={id:number;name:string;quantity:number;unit:string;calories:number;protein:number;carbohydrate:number;fat:number;dietaryFiber:number};
+type MealItem={id:number;name:string;quantity:number;unit:string;gramWeight:number|null;calories:number;protein:number;carbohydrate:number;fat:number;dietaryFiber:number;source:string};
 type Meal={id:number;type:string;name:string;sortOrder:number;source?:string;items:MealItem[]};
 type DailyData={
   record:null|Record<string,number|string>;goal:null|Record<string,number>;
@@ -29,9 +31,9 @@ const mealConfig=[
   {type:"snack",name:"加餐",time:"其他时间",icon:Apple,tone:"#e95cb5"}
 ];
 const nav=[
-  [CalendarDays,"今日饮食","/"],[ClipboardList,"饮食记录","/records"],[CookingPot,"食物维护","/settings"],
-  [ScanLine,"AI 识别记录","/sync/elevatine"],[BarChart3,"营养分析","/stats"],[Target,"目标设置","/settings"],
-  [Dumbbell,"身体数据","/settings"],[ClipboardList,"报告统计","/stats"],[Heart,"我的收藏","#"],[Settings,"设置","/settings"]
+  [CalendarDays,"今日饮食","/"],[ClipboardList,"饮食记录","/records"],
+  [Dumbbell,"运动消耗","/activity"],[ScanLine,"AI 识别记录","/sync/elevatine"],[BarChart3,"营养分析","/stats"],
+  [ClipboardList,"报告统计","/stats"],[Heart,"我的收藏","#"],[Settings,"设置","/settings"]
 ] as const;
 
 export default function Dashboard(){
@@ -47,6 +49,7 @@ export default function Dashboard(){
   const [foodSearching,setFoodSearching]=useState(false);
   const [hasSearched,setHasSearched]=useState(false);
   const [aiReview,setAiReview]=useState<Food|null>(null);
+  const [editingItem,setEditingItem]=useState<MealItem|null>(null);
   const [error,setError]=useState("");
   const [menuOpen,setMenuOpen]=useState(false);
   const foodSearchSequence=useRef(0);
@@ -163,7 +166,7 @@ export default function Dashboard(){
     finally{setSaving(false);}
   }
   async function deleteItem(id:number){
-    if(!confirm("移除此项食物？你可以在数据维护的回收站恢复。"))return;
+    if(!confirm("移除此项食物？你可以在设置中心的回收站恢复。"))return;
     await api(`/api/meals/items/${id}`,{method:"DELETE"});await load();
   }
   async function addWater(){
@@ -177,21 +180,12 @@ export default function Dashboard(){
   const reviewField=(key:keyof Food,value:string|number)=>setAiReview(current=>current?{...current,[key]:value}:current);
 
   return <div className="app-shell">
-    <aside className={`sidebar ${menuOpen?"open":""}`}>
-      <div className="brand"><span className="brandmark"><Leaf size={24} fill="currentColor"/></span><div><strong>FitFuel</strong><small>Fuel Your Best Body</small></div></div>
-      <nav>{nav.map(([Icon,label,href],index)=><button className={index===0?"active":""} onClick={()=>href!=="#"&&router.push(href)} key={label}><Icon size={18}/><span>{label}</span>{index===3&&<i>AI</i>}</button>)}{user?.role==="admin"&&<button onClick={()=>router.push("/admin")}><ShieldCheck size={18}/><span>管理后台</span><i>ADMIN</i></button>}</nav>
-      <div className="sidebar-bottom">
-        <div className="profile-card"><div className="avatar">{user?.displayName?.[0]?.toUpperCase()??"U"}</div><div className="profile-info"><div><b>{user?.displayName??"用户"}</b><em>{user?.role==="admin"?"ADMIN":"PRO"}</em></div><small>{user?.email}</small><span><i/></span></div></div>
-        <button className="logout-button" onClick={logout}><LogOut size={15}/> 退出登录</button>
-      </div>
-    </aside>
-    <button className="mobile-menu" onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X/>:<Menu/>}</button>
-    {menuOpen&&<div className="menu-scrim" onClick={()=>setMenuOpen(false)}/>}
+    <AppSidebar user={user}/>
     <main>
       <header><div><p className="eyebrow">NUTRITION JOURNAL</p><h1>今日饮食</h1><p className="date">{date||"今日"}<CalendarDays size={16}/></p></div>
         <div className="header-actions">
           <div className="date-switch"><button disabled={!date} onClick={()=>setDate(shiftDate(date,-1))}><ChevronLeft/></button><b>{!date||date===chinaDate()?"今天":date.slice(5)}</b><button disabled={!date} onClick={()=>setDate(shiftDate(date,1))}><ChevronRight/></button></div>
-          <button className="ghost" onClick={()=>router.push("/settings")}><Settings size={17}/> 数据维护</button>
+          <button className="ghost" onClick={()=>router.push("/settings")}><Settings size={17}/> 设置中心</button>
           <button className="primary" onClick={()=>openPicker("breakfast")}><Plus size={18}/> 快速添加</button>
         </div>
         <div className="account"><button><Bell size={20}/></button><div className="avatar">{user?.displayName?.[0]??"U"}</div></div>
@@ -200,7 +194,7 @@ export default function Dashboard(){
       {loading?<div className="page-loading"><LoaderCircle/> 正在加载今日记录…</div>:<div className="workspace">
         <section className="main-column">
           <section className="goal-panel">
-            <div className="section-heading"><div><span>DAILY TARGET</span><h2>营养目标进度</h2></div><button onClick={()=>router.push("/settings")}>调整目标 <ChevronRight size={15}/></button></div>
+            <div className="section-heading"><div><span>DAILY TARGET</span><h2>营养目标进度</h2></div><button onClick={()=>router.push("/settings?tab=goal")}>调整目标 <ChevronRight size={15}/></button></div>
             <div className="rings">
               <ProgressRing value={totals.calories} goal={goal.calories} label="热量" unit="千卡" color="#ff7a36" icon={<Flame/>}/>
               <ProgressRing value={totals.carbs} goal={goal.carbs} label="碳水" unit="g" color="#4aa6ef" icon={<Zap/>}/>
@@ -212,7 +206,7 @@ export default function Dashboard(){
             const calories=items.reduce((sum,item)=>sum+item.calories,0);
             return <article className="meal" key={type}>
               <div className="meal-top"><span className="meal-icon" style={{color:tone,background:`${tone}18`}}><Icon size={16}/></span><b>{name}</b><small>{time}</small><strong>{Math.round(calories)} 千卡</strong><button><Ellipsis size={18}/></button></div>
-              {items.map(item=><div className="meal-food" key={item.id}><span>🥗</span><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><span>{Math.round(item.calories)} 千卡</span><button className="item-delete" onClick={()=>deleteItem(item.id)}><Trash2 size={14}/></button></div>)}
+              {items.map(item=><div className="meal-food" key={item.id}><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><span>{Math.round(item.calories)} 千卡</span><button className="item-edit" aria-label={`编辑${item.name}`} onClick={()=>setEditingItem(item)}><Pencil size={14}/></button><button className="item-delete" aria-label={`删除${item.name}`} onClick={()=>deleteItem(item.id)}><Trash2 size={14}/></button></div>)}
               {source!=="elevatine"&&<button className="add-meal" onClick={()=>openPicker(type)}><Plus size={18}/> 添加食物</button>}
             </article>;
           })}</section>
@@ -253,13 +247,73 @@ export default function Dashboard(){
       <div className="searchbox"><Search/><input autoFocus value={query} onChange={e=>updateFoodQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!foodSearching&&searchFoods(query)} placeholder="输入食品名称"/><button disabled={foodSearching||!query.trim()} onClick={()=>searchFoods(query)}>{foodSearching?"AI 检索中":"搜索"}</button></div>
       <p className="picker-label">{foodSearching?"正在检索共享食品":foods.some(food=>food.source==="ai")?"Mimo AI 待审核结果":foods.length?"搜索结果":"输入关键词搜索 food_info"}</p>
       {foodSearching&&<div className="ai-searching"><span><Bot/></span><div><b>正在补充食品数据</b><small>{user?.role==="admin"?"共享库无结果时，Mimo 会提供待审核候选":"正在查询共享食品和你的私人食品"}</small></div><LoaderCircle/></div>}
-      {!foodSearching&&<div className="picker-list">{foods.map(food=><button className={food.source==="ai"?"ai-food":""} disabled={saving} key={food.key} onClick={()=>food.source==="ai"?setAiReview(food):addFood(food)}><span>{food.source==="ai"?<Bot/>:food.source==="custom"?"⭐":"🥗"}</span><div><div className="food-result-title"><b>{food.name}</b>{food.source==="ai"&&<em>待审核</em>}</div><small>{food.serving} · 蛋白质 {Number(food.protein).toFixed(1)}g</small>{food.source==="ai"&&<small className="ai-reason">{food.reason}</small>}</div><strong>{Math.round(food.calories)}<small> 千卡</small></strong><Plus/></button>)}</div>}
+      {!foodSearching&&<div className="picker-list">{foods.map(food=><button className={food.source==="ai"?"ai-food":""} disabled={saving} key={food.key} onClick={()=>food.source==="ai"?setAiReview(food):addFood(food)}><div><div className="food-result-title"><b>{food.name}</b>{food.source==="ai"&&<em>待审核</em>}</div><small>{food.serving} · 蛋白质 {Number(food.protein).toFixed(1)}g</small>{food.source==="ai"&&<small className="ai-reason">{food.reason}</small>}</div><strong>{Math.round(food.calories)}<small> 千卡</small></strong><Plus/></button>)}</div>}
       {!foodSearching&&!foods.length&&<div className="picker-empty"><Search/><b>{hasSearched?"暂无匹配结果":"搜索共享食品"}</b><span>{hasSearched?(user?.role==="admin"?"Mimo 也未能生成可靠结果":"可创建仅自己可见的私人食品"):"输入食品名称开始搜索"}</span></div>}
       {foods.some(food=>food.source==="ai")&&<div className="ai-disclaimer"><Sparkles/><span><b>Mimo 待审核候选</b> 管理员确认营养数据后才会写入共享食品库。</span></div>}
-      <button className="ai-entry" onClick={()=>router.push("/settings")}><CookingPot/><span><b>创建私人食品</b><small>录入自己的品牌或自制食物</small></span><ChevronRight/></button>
+      <button className="ai-entry" onClick={()=>router.push("/settings?tab=foods")}><CookingPot/><span><b>创建私人食品</b><small>录入自己的品牌或自制食物</small></span><ChevronRight/></button>
       </>}
     </div></div>}
+    {editingItem&&<MealItemEditor item={editingItem} onClose={()=>setEditingItem(null)} onSaved={async()=>{setEditingItem(null);await load();}} onError={setError}/>}
   </div>;
+}
+
+function MealItemEditor({item,onClose,onSaved,onError}:{item:MealItem;onClose:()=>void;onSaved:()=>Promise<void>;onError:(message:string)=>void}){
+  const [form,setForm]=useState({
+    name:item.name,quantity:String(item.quantity),unit:item.unit,
+    gramWeight:item.gramWeight==null?"":String(item.gramWeight),
+    calories:String(item.calories),protein:String(item.protein),
+    carbohydrate:String(item.carbohydrate),fat:String(item.fat),
+    dietaryFiber:String(item.dietaryFiber)
+  });
+  const [busy,setBusy]=useState(false);
+  const [aiBusy,setAiBusy]=useState(false);
+  const [reason,setReason]=useState("");
+  useEffect(()=>{
+    const previousOverflow=document.body.style.overflow;
+    document.body.style.overflow="hidden";
+    const closeOnEscape=(event:KeyboardEvent)=>{if(event.key==="Escape"&&!busy&&!aiBusy)onClose();};
+    window.addEventListener("keydown",closeOnEscape);
+    return ()=>{
+      document.body.style.overflow=previousOverflow;
+      window.removeEventListener("keydown",closeOnEscape);
+    };
+  },[aiBusy,busy,onClose]);
+  const field=(key:keyof typeof form,value:string)=>setForm(current=>({...current,[key]:value}));
+  async function estimate(){
+    setAiBusy(true);onError("");
+    try{
+      const result=await api<{estimate:{calories:number;protein:number;carbohydrate:number;fat:number;dietaryFiber:number;confidence:number;reason:string}}>(`/api/meals/items/${item.id}/ai-estimate`,{method:"POST",body:"{}"});
+      setForm(current=>({...current,calories:String(result.estimate.calories),protein:String(result.estimate.protein),carbohydrate:String(result.estimate.carbohydrate),fat:String(result.estimate.fat),dietaryFiber:String(result.estimate.dietaryFiber)}));
+      setReason(`${Math.round(result.estimate.confidence*100)}% 置信度 · ${result.estimate.reason}`);
+    }catch(error){onError(error instanceof Error?error.message:"AI 营养估算失败");}
+    finally{setAiBusy(false);}
+  }
+  async function save(){
+    setBusy(true);onError("");
+    try{
+      await api(`/api/meals/items/${item.id}`,{method:"PATCH",body:JSON.stringify({
+        name:form.name,quantity:Number(form.quantity),unit:form.unit,
+        gramWeight:form.gramWeight===""?null:Number(form.gramWeight),
+        calories:Number(form.calories),protein:Number(form.protein),
+        carbohydrate:Number(form.carbohydrate),fat:Number(form.fat),
+        dietaryFiber:Number(form.dietaryFiber)
+      })});
+      await onSaved();
+    }catch(error){onError(error instanceof Error?error.message:"保存食品失败");}
+    finally{setBusy(false);}
+  }
+  return <div className="record-backdrop meal-editor-backdrop" onMouseDown={onClose}><aside className="record-drawer meal-item-editor" role="dialog" aria-modal="true" aria-labelledby="meal-editor-title" onMouseDown={event=>event.stopPropagation()}>
+    <div className="drawer-head"><div><p>MEAL ITEM</p><h2 id="meal-editor-title">编辑食品信息</h2><span>修改当前餐食快照，不会覆盖共享或私人食品库</span></div><button onClick={onClose} aria-label="关闭编辑食品弹窗"><X/></button></div>
+    <button className="meal-ai-fill" disabled={aiBusy} onClick={()=>void estimate()}>{aiBusy?<LoaderCircle className="spin"/>:<Sparkles/>}<span><b>{aiBusy?"正在估算营养数据…":"使用 MiMo 补全营养"}</b><small>按当前食品名称和实际份量估算，结果可继续修改</small></span></button>
+    {reason&&<p className="meal-ai-reason">{reason}</p>}
+    <label>食品名称<div><input value={form.name} onChange={event=>field("name",event.target.value)}/></div></label>
+    <div className="form-pair"><label>数量<div><input type="number" step=".01" value={form.quantity} onChange={event=>field("quantity",event.target.value)}/></div></label><label>单位<div><input value={form.unit} onChange={event=>field("unit",event.target.value)}/></div></label></div>
+    <label>克重（可选）<div><input type="number" step=".01" value={form.gramWeight} onChange={event=>field("gramWeight",event.target.value)}/></div></label>
+    <label>热量（kcal）<div><input type="number" step=".01" value={form.calories} onChange={event=>field("calories",event.target.value)}/></div></label>
+    <div className="form-pair"><label>蛋白质（g）<div><input type="number" step=".01" value={form.protein} onChange={event=>field("protein",event.target.value)}/></div></label><label>碳水（g）<div><input type="number" step=".01" value={form.carbohydrate} onChange={event=>field("carbohydrate",event.target.value)}/></div></label></div>
+    <div className="form-pair"><label>脂肪（g）<div><input type="number" step=".01" value={form.fat} onChange={event=>field("fat",event.target.value)}/></div></label><label>膳食纤维（g）<div><input type="number" step=".01" value={form.dietaryFiber} onChange={event=>field("dietaryFiber",event.target.value)}/></div></label></div>
+    <button className="save-record" disabled={busy||aiBusy} onClick={()=>void save()}>{busy?<LoaderCircle className="spin"/>:<Save/>}{busy?"正在保存…":"保存食品信息"}</button>
+  </aside></div>;
 }
 
 function ProgressRing({value,goal,label,unit,color,icon}:{value:number;goal:number;label:string;unit:string;color:string;icon:React.ReactNode}){

@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  schemas  = ["fitfuel", "food_info"]
+  schemas  = ["fitfuel", "food_info", "sport"]
 }
 
 model ai_food_lookup {
@@ -48,7 +48,28 @@ model app_user {
   nutrition_goal          nutrition_goal[]
   user_profile            user_profile?
   water_log               water_log[]
+  coros_activity          coros_activity[]
+  coros_daily_summary     coros_daily_summary[]
+  coros_sync_batch        coros_sync_batch[]
+  activity_period_total   activity_period_total[]
 
+  @@schema("fitfuel")
+}
+
+model activity_period_total {
+  id                    BigInt   @id @default(autoincrement())
+  user_id               BigInt
+  period_start          DateTime @db.Date
+  period_end            DateTime @db.Date
+  active_calories_total Decimal  @db.Decimal(12, 2)
+  source                String   @default("manual") @db.VarChar(16)
+  note                  String?  @db.VarChar(500)
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @db.Timestamptz(6)
+  app_user              app_user @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, period_start, period_end])
+  @@index([user_id, period_end(sort: Desc)], map: "ix_activity_period_total_user_end")
   @@schema("fitfuel")
 }
 
@@ -115,6 +136,8 @@ model daily_record {
   elevatine_fat           Decimal?                 @db.Decimal(8, 2)
   macro_source            String                   @default("meals") @db.VarChar(16)
   elevatine_batch_id      BigInt?
+  coros_activity_calories Decimal?                 @db.Decimal(10, 2)
+  activity_source         String                   @default("manual") @db.VarChar(16)
   app_user                app_user                 @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   daily_data_import_batch daily_data_import_batch? @relation(fields: [import_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
   elevatine_import_batch  elevatine_import_batch?  @relation(fields: [elevatine_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -123,6 +146,70 @@ model daily_record {
   @@unique([user_id, record_date])
   @@index([user_id, record_date(sort: Desc)], map: "ix_daily_record_user_date")
   @@schema("fitfuel")
+}
+
+model coros_sync_batch {
+  id                  BigInt                @id @default(autoincrement())
+  user_id             BigInt
+  start_date          DateTime              @db.Date
+  end_date            DateTime              @db.Date
+  status              String                @default("fetching") @db.VarChar(16)
+  activity_count      Int                   @default(0)
+  day_count           Int                   @default(0)
+  error_message       String?
+  started_at          DateTime              @default(now()) @db.Timestamptz(6)
+  completed_at        DateTime?             @db.Timestamptz(6)
+  created_at          DateTime              @default(now()) @db.Timestamptz(6)
+  app_user            app_user              @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  coros_activity      coros_activity[]
+  coros_daily_summary coros_daily_summary[]
+
+  @@index([user_id, created_at(sort: Desc)], map: "ix_coros_sync_batch_user_time")
+  @@schema("sport")
+}
+
+model coros_activity {
+  id               BigInt            @id @default(autoincrement())
+  user_id          BigInt
+  sync_batch_id    BigInt?
+  external_id      String            @db.VarChar(100)
+  activity_date    DateTime          @db.Date
+  activity_name    String?           @db.VarChar(200)
+  sport_type       Int?
+  mode             Int?
+  start_time       DateTime?         @db.Timestamptz(6)
+  end_time         DateTime?         @db.Timestamptz(6)
+  duration_seconds Int?
+  calorie_raw      BigInt            @default(0)
+  calories_kcal    Decimal           @default(0) @db.Decimal(10, 3)
+  raw_payload      Json
+  deleted_at       DateTime?         @db.Timestamptz(6)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  app_user         app_user          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  coros_sync_batch coros_sync_batch? @relation(fields: [sync_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([user_id, external_id])
+  @@index([user_id, activity_date], map: "ix_coros_activity_user_date")
+  @@schema("sport")
+}
+
+model coros_daily_summary {
+  id               BigInt            @id @default(autoincrement())
+  user_id          BigInt
+  sync_batch_id    BigInt?
+  summary_date     DateTime          @db.Date
+  activity_count   Int               @default(0)
+  calorie_raw      BigInt            @default(0)
+  calories_kcal    Decimal           @default(0) @db.Decimal(10, 2)
+  created_at       DateTime          @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime          @default(now()) @db.Timestamptz(6)
+  app_user         app_user          @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  coros_sync_batch coros_sync_batch? @relation(fields: [sync_batch_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@unique([user_id, summary_date])
+  @@index([user_id, summary_date(sort: Desc)], map: "ix_coros_daily_summary_user_date")
+  @@schema("sport")
 }
 
 model daily_data_import_batch {

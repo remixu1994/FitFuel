@@ -84,7 +84,9 @@ create table if not exists fitfuel.elevatine_import_item (
   dedupe_key varchar(500) not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint ck_elevatine_item_match check (match_status in ('matched','ambiguous','unmatched'))
+  constraint ck_elevatine_item_match check (
+    match_status in ('matched','ambiguous','unmatched','estimated','estimate_failed')
+  )
 );
 
 create index if not exists ix_elevatine_item_day on fitfuel.elevatine_import_item(day_id, meal_order, id);

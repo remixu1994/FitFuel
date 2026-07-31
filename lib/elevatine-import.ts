@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { ApiError } from "@/lib/http";
 import { calculateMetabolism } from "@/lib/nutrition";
 import { deleteBatchImages, readStoredImage } from "@/lib/elevatine-storage";
+import { estimateFoodPortionWithMimo } from "@/lib/mimo";
 import { parseElevatineImage } from "@/lib/mimo-vision";
 import type { ParsedElevatineImage } from "@/lib/elevatine-types";
 
@@ -44,6 +45,70 @@ async function parallelLimit<T>(items: T[], limit: number, work: (item: T) => Pr
       await work(item);
     }
   }));
+}
+
+async function enrichMissingBatchItems(batchId: bigint) {
+  const items = await prisma.elevatine_import_item.findMany({
+    where: {
+      selected: true,
+      elevatine_import_day: { batch_id: batchId },
+      OR: [
+        { calories: { lte: 0 } },
+        { carbohydrate: null },
+        { protein: null },
+        { fat: null }
+      ]
+    },
+    orderBy: { id: "asc" }
+  });
+  const estimates = new Map<string, ReturnType<typeof estimateFoodPortionWithMimo>>();
+  await parallelLimit(items, 3, async item => {
+    const unit = item.unit || "份";
+    const isMass = /^(g|克|ml|毫升)$/i.test(unit.trim());
+    const baseQuantity = isMass ? 100 : 1;
+    const multiplier = (number(item.quantity) ?? baseQuantity) / baseQuantity;
+    const key = [
+      norm(item.food_name),
+      norm(unit)
+    ].join("|");
+    let pending = estimates.get(key);
+    if (!pending) {
+      pending = estimateFoodPortionWithMimo(
+        item.food_name,
+        baseQuantity,
+        unit
+      );
+      estimates.set(key, pending);
+    }
+    try {
+      const estimate = await pending;
+      const scaled = (value: number) => Math.round(value * multiplier * 100) / 100;
+      await prisma.elevatine_import_item.update({
+        where: { id: item.id },
+        data: {
+          calories: decimal(scaled(estimate.calories))!,
+          carbohydrate: decimal(scaled(estimate.carbohydrate)),
+          protein: decimal(scaled(estimate.protein)),
+          fat: decimal(scaled(estimate.fat)),
+          confidence: decimal(estimate.confidence),
+          match_status: "estimated",
+          updated_at: new Date()
+        }
+      });
+    } catch (error) {
+      console.error("Elavatine nutrition estimate failed", {
+        itemId: item.id.toString(),
+        foodName: item.food_name,
+        quantity: number(item.quantity),
+        unit: item.unit,
+        error
+      });
+      await prisma.elevatine_import_item.update({
+        where: { id: item.id },
+        data: { match_status: "estimate_failed", updated_at: new Date() }
+      });
+    }
+  });
 }
 
 export async function parseBatch(batchId: bigint, userId: number, retryImageId?: bigint) {
@@ -94,6 +159,7 @@ export async function parseBatch(batchId: bigint, userId: number, retryImageId?:
     }
   });
   await rebuildReview(batchId);
+  await enrichMissingBatchItems(batchId);
   const failed = await prisma.elevatine_import_image.count({ where: { batch_id: batchId, status: "failed" } });
   const parsed = await prisma.elevatine_import_image.count({ where: { batch_id: batchId, status: "parsed" } });
   await prisma.elevatine_import_batch.update({

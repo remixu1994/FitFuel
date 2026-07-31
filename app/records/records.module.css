@@ -62,9 +62,8 @@
 .mealTitle b{font-size:10px}
 .mealTitle small{font-size:7px;color:#96a19b;margin-top:3px}
 .mealTitle>strong{font-size:9px}
-.foods>div{min-height:45px;padding:7px 12px;display:grid;grid-template-columns:27px 1fr auto;gap:8px;align-items:center}
+.foods>div{min-height:45px;padding:7px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
 .foods>div+div{border-top:1px solid #f0f3f1}
-.foods>div>span{font-size:17px}
 .foods b,.foods small{display:block}
 .foods b{font-size:9px}
 .foods small{font-size:7px;color:#919d97;margin-top:3px}

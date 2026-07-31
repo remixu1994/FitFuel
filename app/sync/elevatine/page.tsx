@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "@/lib/client";
+import { AppSidebar } from "@/components/AppSidebar";
 
 type Item = {
   id: string;
@@ -36,7 +37,7 @@ type Item = {
   fat: number | string | null;
   confidence: number | string | null;
   selected: boolean;
-  match_status: "matched" | "ambiguous" | "unmatched";
+  match_status: "matched" | "ambiguous" | "unmatched" | "estimated" | "estimate_failed";
 };
 type Day = {
   id: string;
@@ -239,10 +240,11 @@ export default function ElevatineSyncPage() {
   };
 
   return (
-    <div className="eva-page">
+    <div className="app-shell eva-shell">
+      <AppSidebar/>
+      <section className="eva-page">
       <div className="eva-topbar">
-        <Link href="/" aria-label="返回首页"><ArrowLeft /></Link>
-        <div><span>ELAVATINE SYNC</span><h1>截图同步</h1></div>
+        <div className="eva-page-title"><span>AI FOOD SYNC</span><h1>AI 识别记录</h1></div>
         <div className="eva-steps">
           {["上传截图", "AI 解析", "多日审核", "完成"].map((label, index) => (
             <span key={label} className={step === index + 1 ? "active" : step > index + 1 ? "done" : ""}>
@@ -256,8 +258,8 @@ export default function ElevatineSyncPage() {
         <main className="eva-upload-page">
           <section className="eva-intro">
             <span><Sparkles /></span>
-            <p>IMAGE TO NUTRITION</p>
-            <h2>把每天的记录，<br/>轻松带回 FitFuel</h2>
+            <p>ELAVATINE SYNC</p>
+            <h2>同步 Elavatine<br/>饮食数据</h2>
             <p className="copy">上传 Elavatine 的每日汇总和食品详情截图。AI 只负责识别，你确认后才会写入系统。</p>
             <div className="eva-facts"><span><b>20</b>张/批</span><span><b>24h</b>原图保留</span><span><b>0</b>自动入库</span></div>
           </section>
@@ -334,7 +336,7 @@ export default function ElevatineSyncPage() {
                     <span><b>{items.reduce((s,i)=>s+n(i.fat),0).toFixed(1)}</b>脂肪(g)</span>
                   </div>
                   <div className="eva-food-list">{items.map(item => <button key={item.id} onClick={() => setEditing(item)}>
-                    <span><b>{item.food_name}</b><small>{item.quantity ?? "—"}{item.unit || "份"} · {item.carbohydrate == null ? "仅汇总数据" : "已匹配详情"}</small></span>
+                    <span><b>{item.food_name}</b><small>{item.quantity ?? "—"}{item.unit || "份"} · {item.match_status==="estimated"?"MiMo AI 估算":item.match_status==="estimate_failed"?"AI 估算失败，请手工编辑":item.carbohydrate == null?"仅汇总数据":"已匹配详情"}</small></span>
                     <strong>{Math.round(n(item.calories))} 千卡</strong><Pencil/>
                   </button>)}</div>
                 </section>;
@@ -379,6 +381,7 @@ export default function ElevatineSyncPage() {
           <button className="eva-text-button" onClick={() => { setBatch(null); setFiles([]); setStep(1); }}><RotateCcw/>继续同步</button>
         </main>
       )}
+      </section>
     </div>
   );
 }

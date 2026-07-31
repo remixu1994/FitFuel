@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import {
   BarChart3, CalendarDays, ChevronDown, ChevronRight, ClipboardList, CookingPot,
   Droplets, Dumbbell, Flame, Heart, Leaf, LoaderCircle, LogOut, Menu, Moon,
-  ScanLine, Search, Settings, ShieldCheck, Sun, Target, Utensils, X, Zap
+  ScanLine, Search, Settings, ShieldCheck, Sun, Utensils, X, Zap
 } from "lucide-react";
 import { api } from "@/lib/client";
+import { AppSidebar } from "@/components/AppSidebar";
 import styles from "./records.module.css";
 
 type User = { id:number; email:string; displayName:string; role:string };
@@ -28,11 +29,9 @@ type RecordsData = { range:string; records:RecordDay[] };
 const nav = [
   [CalendarDays,"今日饮食","/"],
   [ClipboardList,"饮食记录","/records"],
-  [CookingPot,"食物维护","/settings"],
+  [Dumbbell,"运动消耗","/activity"],
   [ScanLine,"AI 识别记录","/sync/elevatine"],
   [BarChart3,"营养分析","/stats"],
-  [Target,"目标设置","/settings"],
-  [Dumbbell,"身体数据","/settings"],
   [ClipboardList,"报告统计","/stats"],
   [Heart,"我的收藏","#"],
   [Settings,"设置","/settings"]
@@ -130,20 +129,7 @@ export default function RecordsPage() {
   }
 
   return <div className={styles.shell}>
-    <aside className={`sidebar ${menuOpen?"open":""}`}>
-      <div className="brand"><span className="brandmark"><Leaf size={24} fill="currentColor"/></span><div><strong>FitFuel</strong><small>Fuel Your Best Body</small></div></div>
-      <nav>{nav.map(([Icon,label,href]) =>
-        <button className={href==="/records"?"active":""} onClick={() => href!=="#"&&router.push(href)} key={label}>
-          <Icon size={18}/><span>{label}</span>{label==="AI 识别记录"&&<i>AI</i>}
-        </button>
-      )}{user?.role==="admin"&&<button onClick={()=>router.push("/admin")}><ShieldCheck size={18}/><span>管理后台</span><i>ADMIN</i></button>}</nav>
-      <div className="sidebar-bottom">
-        <div className="profile-card"><div className="avatar">{user?.displayName?.[0]?.toUpperCase()??"U"}</div><div className="profile-info"><div><b>{user?.displayName??"用户"}</b><em>{user?.role==="admin"?"ADMIN":"PRO"}</em></div><small>{user?.email}</small><span><i/></span></div></div>
-        <button className="logout-button" onClick={logout}><LogOut size={15}/> 退出登录</button>
-      </div>
-    </aside>
-    <button className="mobile-menu" onClick={()=>setMenuOpen(!menuOpen)}>{menuOpen?<X/>:<Menu/>}</button>
-    {menuOpen&&<div className="menu-scrim" onClick={()=>setMenuOpen(false)}/>}
+    <AppSidebar user={user}/>
 
     <main className={styles.main}>
       <header className={styles.header}>
@@ -207,7 +193,7 @@ function MealDetail({meal}:{meal:Meal}) {
   const calories=meal.items.reduce((sum,item)=>sum+item.calories,0);
   return <section className={styles.meal}>
     <div className={styles.mealTitle}><span><Icon/></span><div><b>{meal.name}</b><small>{meal.items.length} 项食品</small></div><strong>{Math.round(calories)} 千卡</strong></div>
-    <div className={styles.foods}>{meal.items.map(item=><div key={item.id}><span>🥗</span><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><strong>{Math.round(item.calories)} 千卡</strong></div>)}</div>
+    <div className={styles.foods}>{meal.items.map(item=><div key={item.id}><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><strong>{Math.round(item.calories)} 千卡</strong></div>)}</div>
   </section>;
 }
 

@@ -21,11 +21,34 @@ export async function PATCH(request: Request, context:{params:Promise<{id:string
     assertSameOrigin(request);
     const user=await requireUser();
     const id=positiveNumber((await context.params).id,"记录 ID");
-    const body=await readJson<{quantity?:number;restore?:boolean}>(request);
+    const body=await readJson<{
+      quantity?:number;restore?:boolean;name?:string;unit?:string;gramWeight?:number|null;
+      calories?:number;protein?:number;carbohydrate?:number;fat?:number;
+      dietaryFiber?:number;
+    }>(request);
     await transaction(async client=>{
       const item=await ownedItem(client,id,user.id,Boolean(body.restore));
       if(body.restore){
         await client.query("update fitfuel.meal_item set deleted_at=null,updated_at=now() where id=$1",[id]);
+      }else if(body.name!==undefined||body.calories!==undefined){
+        const name=String(body.name??"").trim();
+        const unit=String(body.unit??"").trim();
+        if(!name||name.length>200)throw new ApiError(400,"食品名称无效");
+        if(!unit||unit.length>32)throw new ApiError(400,"单位无效");
+        const quantity=positiveNumber(body.quantity,"数量");
+        const gramWeight=body.gramWeight==null?null:positiveNumber(body.gramWeight,"克重");
+        const calories=positiveNumber(body.calories,"热量",true);
+        const protein=positiveNumber(body.protein??0,"蛋白质",true);
+        const carbohydrate=positiveNumber(body.carbohydrate??0,"碳水",true);
+        const fat=positiveNumber(body.fat??0,"脂肪",true);
+        const dietaryFiber=positiveNumber(body.dietaryFiber??0,"膳食纤维",true);
+        await client.query(
+          `update fitfuel.meal_item set food_name_snapshot=$2,quantity=$3,unit=$4,
+           gram_weight=$5,calories_snapshot=$6,protein_snapshot=$7,
+           carbohydrate_snapshot=$8,fat_snapshot=$9,dietary_fiber_snapshot=$10,
+           updated_at=now() where id=$1`,
+          [id,name,quantity,unit,gramWeight,calories,protein,carbohydrate,fat,dietaryFiber]
+        );
       }else{
         const quantity=positiveNumber(body.quantity,"数量");
         const ratio=quantity/Number(item.quantity);

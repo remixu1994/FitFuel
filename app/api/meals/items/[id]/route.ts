@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { transaction } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
 import { recalculateDailyRecord } from "@/lib/nutrition";
+export const dynamic = "force-dynamic";
 
 async function ownedItem(client: import("@/lib/db").PrismaQueryClient, id: number, userId: number, includeDeleted=false) {
   const result = await client.query(

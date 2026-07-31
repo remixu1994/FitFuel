@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { destroySession } from "@/lib/auth";
 import { assertSameOrigin, jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

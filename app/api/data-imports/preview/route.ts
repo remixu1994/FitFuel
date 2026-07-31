@@ -4,6 +4,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseDailyDataFile } from "@/lib/daily-data-file";
 import { ApiError, assertSameOrigin, jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";
 

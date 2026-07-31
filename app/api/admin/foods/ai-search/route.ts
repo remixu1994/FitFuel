@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
 import { searchFoodWithMimo } from "@/lib/mimo";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

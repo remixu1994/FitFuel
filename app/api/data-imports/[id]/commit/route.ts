@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
 import { calculateMetabolism } from "@/lib/nutrition";
+export const dynamic = "force-dynamic";
 
 type Source = "meals" | "manual" | "import";
 type Decision = {

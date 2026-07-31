@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 function dateOnly(date: Date) {
   return date.toISOString().slice(0, 10);

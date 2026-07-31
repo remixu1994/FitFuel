@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { assertSameOrigin, jsonError } from "@/lib/http";
 import { commitBatch } from "@/lib/elevatine-import";
+export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ id: string }> };
 

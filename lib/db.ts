@@ -18,14 +18,35 @@ function databaseUrl() {
   return `postgresql://${user}:${password}@${process.env.PGHOST}:${process.env.PGPORT}/${process.env.PGDATABASE}?sslmode=${sslMode}`;
 }
 
-export const prisma = global.fitfuelPrisma ?? new PrismaClient({
-  datasources: { db: { url: databaseUrl() } }
+// ---- Lazy initialization ----
+// Prisma client and env validation are deferred until first runtime access,
+// so importing this module during `next build` does NOT require DB credentials.
+
+let _prisma: PrismaClient | undefined;
+
+function getPrisma(): PrismaClient {
+  if (_prisma) return _prisma;
+  _prisma = global.fitfuelPrisma ?? new PrismaClient({
+    datasources: { db: { url: databaseUrl() } }
+  });
+  if (process.env.NODE_ENV !== "production") global.fitfuelPrisma = _prisma;
+  return _prisma;
+}
+
+/**
+ * Lazy proxy — delegates to the real PrismaClient on first property access.
+ * No DB connection or env-var validation happens at import time.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    const client = getPrisma();
+    const value = Reflect.get(client, prop);
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(client) : value;
+  }
 });
 
-if (process.env.NODE_ENV !== "production") global.fitfuelPrisma = prisma;
+// ---- Raw SQL helpers (unchanged logic) ----
 
-// Raw SQL rows are shaped by each query; this mirrors Prisma's generated
-// model flexibility while preserving the existing query-result contract.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type QueryResultRow = Record<string, any>;
 export type QueryResult<T extends QueryResultRow = QueryResultRow> = {
@@ -83,10 +104,28 @@ export class PrismaQueryClient {
   }
 }
 
-export const db = new PrismaQueryClient(prisma);
+// ---- Lazy db proxy ----
+
+let _db: PrismaQueryClient | undefined;
+
+function getDb(): PrismaQueryClient {
+  if (!_db) _db = new PrismaQueryClient(getPrisma());
+  return _db;
+}
+
+/**
+ * Lazy proxy — delegates to the real PrismaQueryClient on first access.
+ */
+export const db = new Proxy({} as PrismaQueryClient, {
+  get(_target, prop) {
+    const instance = getDb();
+    const value = Reflect.get(instance, prop);
+    return typeof value === "function" ? (value as (...args: unknown[]) => unknown).bind(instance) : value;
+  }
+});
 
 export async function transaction<T>(work: (client: PrismaQueryClient) => Promise<T>) {
-  return prisma.$transaction(
+  return getPrisma().$transaction(
     client => work(new PrismaQueryClient(client)),
     { timeout: 15_000 }
   );

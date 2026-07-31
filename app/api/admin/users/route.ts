@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { db, numbers, transaction } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 type CreateUserBody = {
   email?: string;

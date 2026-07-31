@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

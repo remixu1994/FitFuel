@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

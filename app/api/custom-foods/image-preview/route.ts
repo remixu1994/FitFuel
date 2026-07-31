@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { requireUser } from "@/lib/auth";
 import { ApiError, assertSameOrigin, jsonError } from "@/lib/http";
 import { parseElevatineImage } from "@/lib/mimo-vision";
+export const dynamic = "force-dynamic";
 
 const MAX_BYTES = 10 * 1024 * 1024;
 

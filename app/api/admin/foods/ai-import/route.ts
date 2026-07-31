@@ -6,6 +6,7 @@ import { transaction } from "@/lib/db";
 import { parseReviewedFood, type ReviewedFood } from "@/lib/food-validation";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
 import { addFoodToMeal } from "@/lib/meals";
+export const dynamic = "force-dynamic";
 
 type ImportBody = {
   candidateToken?: string;

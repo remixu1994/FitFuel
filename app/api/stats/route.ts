@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db, numbers, prisma } from "@/lib/db";
 import { jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 function chinaDate() {
   return new Intl.DateTimeFormat("en-CA", {

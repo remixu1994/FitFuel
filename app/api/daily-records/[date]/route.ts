@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
 import { calculateMetabolism } from "@/lib/nutrition";
+export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 

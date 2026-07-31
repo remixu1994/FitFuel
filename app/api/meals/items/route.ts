@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { transaction } from "@/lib/db";
 import { addFoodToMeal, type MealFood } from "@/lib/meals";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

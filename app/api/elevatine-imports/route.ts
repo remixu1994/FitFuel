@@ -8,6 +8,7 @@ import {
   storeElevatineImage
 } from "@/lib/elevatine-storage";
 import { cleanupExpiredElevatineImages } from "@/lib/elevatine-import";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {

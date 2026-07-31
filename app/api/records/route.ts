@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 type MealItem = {
   id: number;

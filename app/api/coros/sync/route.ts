@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { syncCorosActivities } from "@/lib/coros-sync";
 import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {

@@ -2,6 +2,7 @@ import ExcelJS from "exceljs";
 import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError } from "@/lib/http";
+export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";
 

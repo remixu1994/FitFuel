@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { ApiError, jsonError } from "@/lib/http";
 import { calculateMetabolism } from "@/lib/nutrition";
+export const dynamic = "force-dynamic";
 
 const ranges = {
   "7d": 7,

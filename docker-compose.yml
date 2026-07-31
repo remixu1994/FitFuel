@@ -1,0 +1,18 @@
+services:
+  app:
+    image: ghcr.io/remixu1994/fitfuel:latest
+    container_name: fitfuel-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - HOSTNAME=0.0.0.0
+    volumes:
+      # Persist private uploads (Elavatine images)
+      - fitfuel_private:/app/.private
+
+volumes:
+  fitfuel_private:

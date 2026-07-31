@@ -4,9 +4,92 @@
 
 | 依赖 | 版本 | 说明 |
 |------|------|------|
-| Node.js | 22+ | 推荐 22.22+ |
+| Node.js | 22+ | 推荐 22.22+ (裸机部署) |
+| Docker | 24+ | Docker 部署方式 |
 | PostgreSQL | 14+ | 需支持多 schema |
 | npm | 10+ | 随 Node.js 安装 |
+
+## Docker 部署（推荐）
+
+### CI/CD 自动构建
+
+项目已配置 GitHub Actions（`.github/workflows/deploy.yml`），推送 main 分支时自动：
+
+1. **构建 Docker 镜像** — 基于 Node.js 22 Alpine，多阶段构建优化体积
+2. **推送到 ghcr.io** — 标签格式：`sha-xxxxx` + `latest`
+3. **自动 SSH 部署**（可选）— 需配置 GitHub Secrets
+
+镜像地址：`ghcr.io/remixu1994/fitfuel`
+
+### GitHub 配置
+
+在仓库 **Settings → Secrets and variables → Actions** 中配置：
+
+#### 自动部署所需 Secrets（可选）
+
+| Secret | 说明 |
+|--------|------|
+| `DEPLOY_HOST` | 服务器 IP 或域名 |
+| `DEPLOY_USER` | SSH 登录用户 |
+| `DEPLOY_SSH_KEY` | SSH 私钥 |
+| `DEPLOY_PORT` | SSH 端口（默认 22） |
+
+#### 自动部署所需 Variables
+
+| Variable | 说明 |
+|----------|------|
+| `DEPLOY_ENABLED` | 设为 `true` 开启自动 SSH 部署 |
+| `DEPLOY_PATH` | 服务器上的项目路径（默认 `/opt/fitfuel`） |
+
+> 如果不配置自动部署，每次 push 仅构建镜像，需手动 pull 到服务器。
+
+### 服务器首次部署
+
+```bash
+# 1. 拉取项目
+git clone git@github.com:remixu1994/FitFuel.git /opt/fitfuel
+cd /opt/fitfuel
+
+# 2. 创建 .env 并填入生产环境配置
+cp .env.example .env
+# 编辑 .env —— 填入数据库地址、MiMo API Key 等
+
+# 3. 登录 ghcr.io（需 GitHub Personal Access Token，权限 read:packages）
+echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u remixu1994 --password-stdin
+
+# 4. 拉取并启动
+docker compose pull app
+docker compose up -d app
+```
+
+### 后续更新
+
+```bash
+cd /opt/fitfuel
+docker compose pull app
+docker compose up -d --remove-orphans app
+docker image prune -f
+```
+
+或直接运行部署脚本：
+
+```bash
+bash scripts/deploy.sh
+```
+
+### Docker 架构说明
+
+```
+Dockerfile (多阶段构建)
+├── Stage 1: deps       — 安装生产依赖
+├── Stage 2: builder    — prisma generate + next build (standalone 模式)
+└── Stage 3: runner     — 仅 copy 必需文件，非 root 用户运行
+```
+
+- **Base image**: `node:22-alpine`
+- **Next.js 模式**: `output: "standalone"`（自包含 server.js）
+- **运行用户**: `nextjs` (uid 1001)，非 root
+- **暴露端口**: `3000`
 
 ## 环境变量
 

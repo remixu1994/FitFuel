@@ -4,7 +4,7 @@ RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --legacy-peer-deps
 
 # ---- Stage 2: Build ----
 FROM node:22-alpine AS builder
@@ -12,7 +12,7 @@ RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 COPY . .
 

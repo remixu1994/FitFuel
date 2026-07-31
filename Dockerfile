@@ -1,6 +1,6 @@
 # ---- Stage 1: Production dependencies ----
 FROM node:22-alpine AS deps
-RUN apk add --no-cache libc6-compat python3 make g++ vips-dev vips-heif-dev
+RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -8,7 +8,7 @@ RUN npm ci --omit=dev
 
 # ---- Stage 2: Build ----
 FROM node:22-alpine AS builder
-RUN apk add --no-cache libc6-compat python3 make g++ vips-dev vips-heif-dev
+RUN apk add --no-cache libc6-compat python3 make g++ vips-dev
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -25,7 +25,7 @@ RUN npm run build
 
 # ---- Stage 3: Production runner ----
 FROM node:22-alpine AS runner
-RUN apk add --no-cache libc6-compat vips-heif
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 ENV NODE_ENV=production

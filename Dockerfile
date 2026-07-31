@@ -16,10 +16,7 @@ RUN npm install --legacy-peer-deps
 
 COPY . .
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Build Next.js (standalone output)
+# Build Next.js (prebuild hook runs `prisma generate` first)
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
@@ -45,7 +42,7 @@ COPY --from=builder /app/prisma ./prisma
 # Copy built Next.js standalone output
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
-COPY --from=builder /app/public ./public 2>/dev/null || true
+COPY --from=builder /app/public ./public
 
 # Copy database migrations & scripts for manual operations
 COPY --from=builder /app/database ./database

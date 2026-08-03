@@ -10,13 +10,14 @@ import {
 } from "lucide-react";
 import { api, chinaDate, shiftDate } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
+import { mealLabel, mealOrder } from "@/lib/meal-types";
 
 type Food = {
   key:string;name:string;brand?:string;serving:string;gram_weight:number;calories:number;
   protein:number;carbohydrate:number;fat:number;dietary_fiber:number;source:string;
   confidence?:number;reason?:string;candidateToken?:string;
 };
-type MealItem={id:number;name:string;quantity:number;unit:string;gramWeight:number|null;calories:number;protein:number;carbohydrate:number;fat:number;dietaryFiber:number;source:string};
+type MealItem={id:number;name:string;quantity:number;unit:string;gramWeight:number|null;calories:number;protein:number;carbohydrate:number;fat:number;dietaryFiber:number;source:string;catalogExists?:boolean};
 type Meal={id:number;type:string;name:string;sortOrder:number;source?:string;items:MealItem[]};
 type DailyData={
   record:null|Record<string,number|string>;goal:null|Record<string,number>;
@@ -24,15 +25,10 @@ type DailyData={
 };
 type User={id:number;email:string;displayName:string;role:string;mustChangePassword:boolean};
 
-const mealConfig=[
-  {type:"breakfast",name:"早餐",time:"07:00–09:00",icon:Sun,tone:"#ffb42d"},
-  {type:"lunch",name:"午餐",time:"12:00–14:00",icon:Sun,tone:"#f7bd20"},
-  {type:"dinner",name:"晚餐",time:"18:00–20:00",icon:Moon,tone:"#75a6a2"},
-  {type:"snack",name:"加餐",time:"其他时间",icon:Apple,tone:"#e95cb5"}
-];
+const mealTones=["#ffb42d","#f7bd20","#75a6a2","#e95cb5","#4aa6ef","#8b73e8"];
 const nav=[
   [CalendarDays,"今日饮食","/"],[ClipboardList,"饮食记录","/records"],
-  [Dumbbell,"运动消耗","/activity"],[ScanLine,"AI 识别记录","/sync/elevatine"],[BarChart3,"营养分析","/stats"],
+  [Dumbbell,"运动消耗","/activity"],[ScanLine,"AI 识别记录","/sync/elevatine"],[BarChart3,"体重分析","/stats"],
   [ClipboardList,"报告统计","/stats"],[Heart,"我的收藏","#"],[Settings,"设置","/settings"]
 ] as const;
 
@@ -88,6 +84,7 @@ export default function Dashboard(){
           method:"POST",body:JSON.stringify({query:term})
         });
         if(sequence!==foodSearchSequence.current)return;
+        setError("");
         setFoods(ai.existingFood?[ai.existingFood]:ai.candidate?[{...ai.candidate,candidateToken:ai.candidateToken}]:[]);
       }
     }
@@ -120,15 +117,14 @@ export default function Dashboard(){
     setPicker(null);setAiReview(null);setFoods([]);setFoodSearching(false);setHasSearched(false);
   }
 
-  const meals=[
-    ...mealConfig.map(config=>({
-      ...config,source:"manual",items:data?.meals.find(meal=>meal.type===config.type)?.items??[]
-    })),
-    ...(data?.meals.filter(meal=>!mealConfig.some(config=>config.type===meal.type)).map(meal=>({
-      type:meal.type,name:meal.name,time:"Elavatine 同步",icon:CookingPot,tone:"#168cf7",
-      source:meal.source||"elevatine",items:meal.items
-    }))??[])
-  ];
+  const configuredCount=Math.max(1,Math.min(12,Number(data?.profile?.meal_count??3)));
+  const dbByOrder=new Map<number,Meal>();
+  for(const meal of data?.meals??[]){const order=mealOrder(meal.type);if(order&&!dbByOrder.has(order))dbByOrder.set(order,meal);}
+  const maxOrder=Math.max(configuredCount,...[...dbByOrder.keys(),0]);
+  const meals=Array.from({length:maxOrder},(_,index)=>{
+    const order=index+1;const existing=dbByOrder.get(order);const tone=mealTones[index%mealTones.length];
+    return {type:`meal_${order}`,name:mealLabel(order),time:existing?.source==="elevatine"?"Elavatine 同步":"自定义餐次",icon:CookingPot,tone,source:existing?.source||"manual",items:existing?.items??[],order,configured:order<=configuredCount};
+  });
   const mealTotals=useMemo(()=>meals.flatMap(meal=>meal.items).reduce((sum,item)=>({
     calories:sum.calories+item.calories,protein:sum.protein+item.protein,
     carbs:sum.carbs+item.carbohydrate,fat:sum.fat+item.fat,fiber:sum.fiber+item.dietaryFiber
@@ -169,6 +165,13 @@ export default function Dashboard(){
     if(!confirm("移除此项食物？你可以在设置中心的回收站恢复。"))return;
     await api(`/api/meals/items/${id}`,{method:"DELETE"});await load();
   }
+  async function removeMeal(mealType:string){
+    if(!confirm("移除此空餐次？之后可以在设置中心重新增加餐次。"))return;
+    setSaving(true);setError("");
+    try{await api("/api/meals/groups",{method:"DELETE",body:JSON.stringify({date,mealType})});await load();}
+    catch(error){setError(error instanceof Error?error.message:"移除餐次失败");}
+    finally{setSaving(false);}
+  }
   async function addWater(){
     setSaving(true);
     try{await api("/api/water",{method:"POST",body:JSON.stringify({date,amount:250})});await load();}
@@ -186,7 +189,7 @@ export default function Dashboard(){
         <div className="header-actions">
           <div className="date-switch"><button disabled={!date} onClick={()=>setDate(shiftDate(date,-1))}><ChevronLeft/></button><b>{!date||date===chinaDate()?"今天":date.slice(5)}</b><button disabled={!date} onClick={()=>setDate(shiftDate(date,1))}><ChevronRight/></button></div>
           <button className="ghost" onClick={()=>router.push("/settings")}><Settings size={17}/> 设置中心</button>
-          <button className="primary" onClick={()=>openPicker("breakfast")}><Plus size={18}/> 快速添加</button>
+          <button className="primary" onClick={()=>openPicker("meal_1")}><Plus size={18}/> 快速添加</button>
         </div>
         <div className="account"><button><Bell size={20}/></button><div className="avatar">{user?.displayName?.[0]??"U"}</div></div>
       </header>
@@ -202,16 +205,16 @@ export default function Dashboard(){
               <ProgressRing value={totals.fat} goal={goal.fat} label="脂肪" unit="g" color="#efb62d" icon={<Droplets/>}/>
             </div>
           </section>
-          <section className="meals">{meals.map(({type,name,time,icon:Icon,tone,source,items})=>{
+          <section className="meals">{meals.map(({type,name,time,icon:Icon,tone,source,items,order,configured})=>{
             const calories=items.reduce((sum,item)=>sum+item.calories,0);
             return <article className="meal" key={type}>
-              <div className="meal-top"><span className="meal-icon" style={{color:tone,background:`${tone}18`}}><Icon size={16}/></span><b>{name}</b><small>{time}</small><strong>{Math.round(calories)} 千卡</strong><button><Ellipsis size={18}/></button></div>
-              {items.map(item=><div className="meal-food" key={item.id}><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><span>{Math.round(item.calories)} 千卡</span><button className="item-edit" aria-label={`编辑${item.name}`} onClick={()=>setEditingItem(item)}><Pencil size={14}/></button><button className="item-delete" aria-label={`删除${item.name}`} onClick={()=>deleteItem(item.id)}><Trash2 size={14}/></button></div>)}
-              {source!=="elevatine"&&<button className="add-meal" onClick={()=>openPicker(type)}><Plus size={18}/> 添加食物</button>}
+              <div className="meal-top"><span className="meal-icon" style={{color:tone,background:`${tone}18`}}><Icon size={16}/></span><b>{name}</b><small>{time}</small><strong>{Math.round(calories)} 千卡</strong><button title={configured&&order===configuredCount&&items.length===0?`移除${name}`:"餐次设置"} disabled={!configured||order!==configuredCount||items.length>0} onClick={()=>void removeMeal(type)}><Trash2 size={16}/></button></div>
+              {items.map(item=><div className="meal-food" key={item.id}><div><b>{item.name}{item.source==="elevatine"&&!item.catalogExists&&<em className="food-pending" title="该食品来自 Elavatine，尚未录入共享食品库">!</em>}</b><small>{item.quantity} {item.unit}</small></div><span>{Math.round(item.calories)} 千卡</span><button className="item-edit" aria-label={`编辑${item.name}`} onClick={()=>setEditingItem(item)}><Pencil size={14}/></button><button className="item-delete" aria-label={`删除${item.name}`} onClick={()=>deleteItem(item.id)}><Trash2 size={14}/></button></div>)}
+              <button className="add-meal" onClick={()=>openPicker(type)}><Plus size={18}/> 添加食物</button>
             </article>;
           })}</section>
           <section className="quick-add"><div className="section-heading"><div><span>FOOD DATABASE</span><h2>搜索食品库</h2></div></div>
-            <div className="searchbox"><Search/><input value={query} onChange={e=>updateFoodQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&openPicker("breakfast",query)} placeholder="搜索共享食品库"/><button onClick={()=>openPicker("breakfast",query)}>搜索</button></div>
+            <div className="searchbox"><Search/><input value={query} onChange={e=>updateFoodQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&openPicker("meal_1",query)} placeholder="搜索共享食品库"/><button onClick={()=>openPicker("meal_1",query)}>搜索</button></div>
             <div className="empty-inline"><CookingPot/><span>共享食品来自 food_info；私人食品仍只对你可见。</span></div>
           </section>
           <div className="tip"><Sparkles/><span><b>真实数据已接入</b> 每次记录都会保存到你的账号，并同步更新统计模型。</span></div>
@@ -223,7 +226,7 @@ export default function Dashboard(){
             <NutrientBar label="蛋白质" value={totals.protein} goal={goal.protein} unit="g" color="#25ad67" icon={<Dumbbell/>}/>
             <NutrientBar label="脂肪" value={totals.fat} goal={goal.fat} unit="g" color="#eeb529" icon={<Droplets/>}/>
           </section>
-          <section className="ai-panel"><div className="section-heading"><div><span>AI COACH</span><h2>营养分析</h2></div></div><div className="ai-orb"><Bot/></div><b>{totals.calories?"今日记录已同步":"等待你的第一餐"}</b><p>{totals.calories?`已摄入 ${Math.round(totals.calories)} 千卡，距离目标还差 ${Math.max(0,Math.round(goal.calories-totals.calories))} 千卡。`:"添加食物后，这里会基于真实摄入提供反馈。"}</p></section>
+          <section className="ai-panel"><div className="section-heading"><div><span>AI COACH</span><h2>体重分析</h2></div></div><div className="ai-orb"><Bot/></div><b>{totals.calories?"今日记录已同步":"等待你的第一餐"}</b><p>{totals.calories?`已摄入 ${Math.round(totals.calories)} 千卡，距离目标还差 ${Math.max(0,Math.round(goal.calories-totals.calories))} 千卡。`:"添加食物后，这里会基于真实摄入提供反馈。"}</p></section>
           <section className="water-panel"><div className="section-heading"><div><span>HYDRATION</span><h2>饮水量</h2></div></div><div className="water-number"><b>{data?.water??0}</b> ml <span>/ {goal.water} ml</span></div><div className="water-track"><i style={{width:`${Math.min(100,(data?.water??0)/goal.water*100)}%`}}/></div>
             <div className="glasses">{[.2,.4,.6,.8,1].map(level=><button className={(data?.water??0)>=goal.water*level?"filled":""} key={level}><GlassWater/><small>{level*100}%</small></button>)}</div>
             <button className="water-button" disabled={saving} onClick={addWater}><Plus/> 记录 250ml</button>
@@ -232,7 +235,7 @@ export default function Dashboard(){
       </div>}
     </main>
     {picker&&<div className="modal-backdrop" onMouseDown={closePicker}><div className="food-picker" onMouseDown={e=>e.stopPropagation()}>
-      <div className="picker-head"><div><span>ADD TO {mealConfig.find(m=>m.type===picker)?.name}</span><h2>{aiReview?"审核 AI 食品":"添加食物"}</h2></div><button onClick={closePicker}><X/></button></div>
+      <div className="picker-head"><div><span>ADD TO {picker?mealLabel(mealOrder(picker)??1):""}</span><h2>{aiReview?"审核 AI 食品":"添加食物"}</h2></div><button onClick={closePicker}><X/></button></div>{error&&<div className="picker-error">{error}</div>}
       {aiReview?<div className="ai-review-form">
         <div className="ai-review-note"><Bot/><div><b>管理员审核</b><span>确认后将写入共享食品库，并加入当前餐次。</span></div></div>
         <label>食品名称<input value={aiReview.name} onChange={e=>reviewField("name",e.target.value)}/></label>
@@ -247,7 +250,7 @@ export default function Dashboard(){
       <div className="searchbox"><Search/><input autoFocus value={query} onChange={e=>updateFoodQuery(e.target.value)} onKeyDown={e=>e.key==="Enter"&&!foodSearching&&searchFoods(query)} placeholder="输入食品名称"/><button disabled={foodSearching||!query.trim()} onClick={()=>searchFoods(query)}>{foodSearching?"AI 检索中":"搜索"}</button></div>
       <p className="picker-label">{foodSearching?"正在检索共享食品":foods.some(food=>food.source==="ai")?"Mimo AI 待审核结果":foods.length?"搜索结果":"输入关键词搜索 food_info"}</p>
       {foodSearching&&<div className="ai-searching"><span><Bot/></span><div><b>正在补充食品数据</b><small>{user?.role==="admin"?"共享库无结果时，Mimo 会提供待审核候选":"正在查询共享食品和你的私人食品"}</small></div><LoaderCircle/></div>}
-      {!foodSearching&&<div className="picker-list">{foods.map(food=><button className={food.source==="ai"?"ai-food":""} disabled={saving} key={food.key} onClick={()=>food.source==="ai"?setAiReview(food):addFood(food)}><div><div className="food-result-title"><b>{food.name}</b>{food.source==="ai"&&<em>待审核</em>}</div><small>{food.serving} · 蛋白质 {Number(food.protein).toFixed(1)}g</small>{food.source==="ai"&&<small className="ai-reason">{food.reason}</small>}</div><strong>{Math.round(food.calories)}<small> 千卡</small></strong><Plus/></button>)}</div>}
+      {!foodSearching&&<div className="picker-list">{foods.map(food=><button className={food.source==="ai"?"ai-food":""} disabled={saving} key={food.key} onClick={()=>food.source==="ai"?(setError(""),setAiReview(food)):addFood(food)}><div><div className="food-result-title"><b>{food.name}</b>{food.source==="ai"&&<em>待审核</em>}</div><small>{food.serving} · 蛋白质 {Number(food.protein).toFixed(1)}g</small>{food.source==="ai"&&<small className="ai-reason">{food.reason}</small>}</div><strong>{Math.round(food.calories)}<small> 千卡</small></strong><Plus/></button>)}</div>}
       {!foodSearching&&!foods.length&&<div className="picker-empty"><Search/><b>{hasSearched?"暂无匹配结果":"搜索共享食品"}</b><span>{hasSearched?(user?.role==="admin"?"Mimo 也未能生成可靠结果":"可创建仅自己可见的私人食品"):"输入食品名称开始搜索"}</span></div>}
       {foods.some(food=>food.source==="ai")&&<div className="ai-disclaimer"><Sparkles/><span><b>Mimo 待审核候选</b> 管理员确认营养数据后才会写入共享食品库。</span></div>}
       <button className="ai-entry" onClick={()=>router.push("/settings?tab=foods")}><CookingPot/><span><b>创建私人食品</b><small>录入自己的品牌或自制食物</small></span><ChevronRight/></button>

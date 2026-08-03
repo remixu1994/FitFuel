@@ -9,12 +9,13 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
+import { mealLabel, mealOrder } from "@/lib/meal-types";
 import styles from "./records.module.css";
 
 type User = { id:number; email:string; displayName:string; role:string };
 type MealItem = {
   id:number; name:string; quantity:number; unit:string; calories:number;
-  protein:number; carbohydrate:number; fat:number; dietaryFiber:number;
+  protein:number; carbohydrate:number; fat:number; dietaryFiber:number; source?:string; catalogExists?:boolean;
 };
 type Meal = { id:number; type:string; name:string; sortOrder:number; items:MealItem[] };
 type RecordDay = {
@@ -31,7 +32,7 @@ const nav = [
   [ClipboardList,"饮食记录","/records"],
   [Dumbbell,"运动消耗","/activity"],
   [ScanLine,"AI 识别记录","/sync/elevatine"],
-  [BarChart3,"营养分析","/stats"],
+  [BarChart3,"体重分析","/stats"],
   [ClipboardList,"报告统计","/stats"],
   [Heart,"我的收藏","#"],
   [Settings,"设置","/settings"]
@@ -190,10 +191,11 @@ function Macro({icon,label,value}:{icon:React.ReactNode;label:string;value:numbe
 
 function MealDetail({meal}:{meal:Meal}) {
   const Icon=mealIcons[meal.type]??Utensils;
+  const order=mealOrder(meal.type);
   const calories=meal.items.reduce((sum,item)=>sum+item.calories,0);
   return <section className={styles.meal}>
-    <div className={styles.mealTitle}><span><Icon/></span><div><b>{meal.name}</b><small>{meal.items.length} 项食品</small></div><strong>{Math.round(calories)} 千卡</strong></div>
-    <div className={styles.foods}>{meal.items.map(item=><div key={item.id}><div><b>{item.name}</b><small>{item.quantity} {item.unit}</small></div><strong>{Math.round(item.calories)} 千卡</strong></div>)}</div>
+    <div className={styles.mealTitle}><span><Icon/></span><div><b>{order?mealLabel(order):meal.name}</b><small>{meal.items.length} 项食品</small></div><strong>{Math.round(calories)} 千卡</strong></div>
+    <div className={styles.foods}>{meal.items.map(item=><div key={item.id}><div><b>{item.name}{item.source==="elevatine"&&!item.catalogExists&&<em className={styles.foodPending} title="该食品来自 Elavatine，尚未录入共享食品库">!</em>}</b><small>{item.quantity} {item.unit}</small></div><strong>{Math.round(item.calories)} 千卡</strong></div>)}</div>
   </section>;
 }
 

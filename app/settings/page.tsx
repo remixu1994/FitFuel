@@ -10,7 +10,7 @@ import {
 import { api } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
 
-type Profile={email:string;display_name:string;height_cm:number;age:number;gender:string;initial_weight_kg:number;target_weight_kg:number};
+type Profile={email:string;display_name:string;height_cm:number;age:number;gender:string;initial_weight_kg:number;target_weight_kg:number;meal_count:number};
 type Goal={goal_type:string;calories_kcal:number;protein_g:number;carbohydrate_g:number;fat_g:number;water_ml:number};
 type CustomFood={id:number;name:string;brand?:string;serving_name:string;gram_weight:number;calories:number;protein:number;carbohydrate:number;fat:number;dietary_fiber:number;deleted_at?:string};
 type ImageFoodCandidate={
@@ -72,7 +72,7 @@ export default function SettingsPage(){
   const success=(text:string)=>{setMessage(text);setTimeout(()=>setMessage(""),2500);};
   async function saveProfile(){
     if(!profile)return;setSaving(true);setError("");
-    try{await api("/api/profile",{method:"PATCH",body:JSON.stringify({displayName:profile.display_name,height:profile.height_cm,age:profile.age,gender:profile.gender,initialWeight:profile.initial_weight_kg,targetWeight:profile.target_weight_kg})});success("个人资料已保存");}
+    try{await api("/api/profile",{method:"PATCH",body:JSON.stringify({displayName:profile.display_name,height:profile.height_cm,age:profile.age,gender:profile.gender,initialWeight:profile.initial_weight_kg,targetWeight:profile.target_weight_kg,mealCount:profile.meal_count})});success("个人资料已保存");}
     catch(error){setError(error instanceof Error?error.message:"保存失败");}finally{setSaving(false);}
   }
   async function saveGoal(){
@@ -160,6 +160,7 @@ export default function SettingsPage(){
             <div className="form-pair"><label>身高（cm）<input type="number" value={profile.height_cm} onChange={e=>field("height_cm",+e.target.value)}/></label><label>年龄<input type="number" value={profile.age} onChange={e=>field("age",+e.target.value)}/></label></div>
             <label>性别<select value={profile.gender} onChange={e=>field("gender",e.target.value)}><option value="male">男性</option><option value="female">女性</option><option value="other">其他</option></select></label>
             <div className="form-pair"><label>初始体重（kg）<input type="number" step=".1" value={profile.initial_weight_kg} onChange={e=>field("initial_weight_kg",+e.target.value)}/></label><label>目标体重（kg）<input type="number" step=".1" value={profile.target_weight_kg} onChange={e=>field("target_weight_kg",+e.target.value)}/></label></div>
+            <label>每日餐次数<select value={profile.meal_count??3} onChange={e=>field("meal_count",+e.target.value)}>{[1,2,3,4,5,6,7,8].map(count=><option key={count} value={count}>{count} 餐</option>)}</select><small>首页和 Elavatine 同步会复用这些“第 N 餐”分组；已有食物的餐次不能直接减少。</small></label>
             <button className="manage-save" disabled={saving} onClick={saveProfile}><Save/> 保存资料</button>
           </div></div>}
           {tab==="goal"&&goal&&<div className="manage-section"><div className="manage-title"><span>DAILY TARGET</span><h2>目标设置</h2><p>设置每日热量、三大营养素和饮水目标，首页进度环会立即更新。</p></div><div className="manage-form">

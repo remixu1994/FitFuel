@@ -3,6 +3,7 @@ import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
 import { calculateMetabolism } from "@/lib/nutrition";
+import { mealLabel, mealOrder } from "@/lib/meal-types";
 export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -27,7 +28,7 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
         [user.id]
       ),
       db.query(
-        `select initial_weight_kg,target_weight_kg,height_cm,age,gender
+        `select initial_weight_kg,target_weight_kg,height_cm,age,gender,meal_count
          from fitfuel.user_profile where user_id=$1`,
         [user.id]
       ),
@@ -36,7 +37,8 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
                 mi.id as item_id,mi.food_name_snapshot,mi.quantity,mi.unit,
                 mi.gram_weight,mi.source as item_source,
                 mi.calories_snapshot,mi.protein_snapshot,mi.carbohydrate_snapshot,
-                mi.fat_snapshot,mi.dietary_fiber_snapshot
+                mi.fat_snapshot,mi.dietary_fiber_snapshot,
+                exists(select 1 from food_info.food f where f.status=1 and lower(f.name)=lower(mi.food_name_snapshot)) as catalog_exists
          from fitfuel.meal m
          join fitfuel.daily_record d on d.id=m.daily_record_id
          left join fitfuel.meal_item mi on mi.meal_id=m.id and mi.deleted_at is null
@@ -55,16 +57,20 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
     const grouped = new Map<number, Record<string, unknown>>();
     for (const raw of meals.rows) {
       const row = numbers(raw);
-      if (!grouped.has(row.meal_id)) grouped.set(row.meal_id, {
-        id: row.meal_id, type: row.meal_type, name: row.display_name,
-        sortOrder: row.sort_order, source: row.source, items: []
+      const order = mealOrder(String(row.meal_type)) ?? Number(row.sort_order);
+      const key = order || Number(row.meal_id);
+      if (!grouped.has(key)) grouped.set(key, {
+        id: row.meal_id, type: `meal_${order || row.sort_order}`, name: order ? mealLabel(order) : row.display_name,
+        sortOrder: order || row.sort_order, source: row.source, items: []
       });
-      if (row.item_id) (grouped.get(row.meal_id)!.items as unknown[]).push({
+      const group = grouped.get(key)!;
+      if (row.source === "elevatine") group.source = "elevatine";
+      if (row.item_id) (group.items as unknown[]).push({
         id: row.item_id, name: row.food_name_snapshot, quantity: row.quantity, unit: row.unit,
         gramWeight: row.gram_weight, source: row.item_source,
         calories: row.calories_snapshot, protein: row.protein_snapshot,
         carbohydrate: row.carbohydrate_snapshot, fat: row.fat_snapshot,
-        dietaryFiber: row.dietary_fiber_snapshot
+        dietaryFiber: row.dietary_fiber_snapshot, catalogExists: row.catalog_exists
       });
     }
     return NextResponse.json({

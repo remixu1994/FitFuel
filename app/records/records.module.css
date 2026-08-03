@@ -63,6 +63,7 @@
 .mealTitle small{font-size:9px;color:#96a19b;margin-top:3px}
 .mealTitle>strong{font-size:11px}
 .foods>div{min-height:45px;padding:7px 12px;display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+.foodPending{display:inline-grid;place-items:center;width:14px;height:14px;margin-left:5px;border-radius:50%;background:#f3a51d;color:#fff;font-size:10px;font-style:normal;vertical-align:middle}
 .foods>div+div{border-top:1px solid #f0f3f1}
 .foods b,.foods small{display:block}
 .foods b{font-size:11px}

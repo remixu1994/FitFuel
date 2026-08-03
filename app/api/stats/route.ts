@@ -19,6 +19,39 @@ function shiftDate(value: string, days: number) {
   return date.toISOString().slice(0, 10);
 }
 
+function toDateString(value: unknown) {
+  if (value instanceof Date) return value.toISOString().slice(0, 10);
+  return String(value).slice(0, 10);
+}
+
+function estimateGoalDate(rows: Record<string, unknown>[], periodStart: string, target: number) {
+  const start = Date.parse(`${periodStart}T00:00:00.000Z`);
+  const points = rows
+    .map(row => ({
+      x: (Date.parse(`${toDateString(row.record_date)}T00:00:00.000Z`) - start) / 86400000,
+      y: row.weight_kg
+    }))
+    .filter((p): p is { x: number; y: number } => p.y !== null && p.y !== undefined && Number(p.y) > 0);
+  if (points.length < 2) return null;
+  const n = points.length;
+  const sumX = points.reduce((s, p) => s + p.x, 0);
+  const sumY = points.reduce((s, p) => s + Number(p.y), 0);
+  const sumXY = points.reduce((s, p) => s + p.x * Number(p.y), 0);
+  const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+  const denom = n * sumX2 - sumX * sumX;
+  if (Math.abs(denom) < 1e-9) return null;
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  if (slope >= -0.001) return null;
+  const intercept = (sumY - slope * sumX) / n;
+  const lastX = Math.max(...points.map(p => p.x));
+  const projected = slope * lastX + intercept;
+  const remaining = Math.max(0, projected - target);
+  if (remaining <= 0) return null;
+  const weeks = remaining / (-slope * 7);
+  if (!Number.isFinite(weeks) || weeks > 520) return null;
+  return new Date(Date.now() + weeks * 7 * 86400000).toISOString().slice(0, 10);
+}
+
 export async function GET(request:Request){
   try{
     const user=await requireUser();
@@ -41,8 +74,34 @@ export async function GET(request:Request){
          from fitfuel.user_profile where user_id=$1`,[user.id]
       ),
       db.query(
-        `select * from fitfuel.weekly_summary where user_id=$1
-         order by week_start desc limit 12`,[user.id]
+        `with week_range as (
+           select distinct date_trunc('week', record_date)::date as week_start
+           from fitfuel.daily_record where user_id=$1 and deleted_at is null
+         ),
+         boundary as (
+           select
+             w.week_start,
+             min(d.weight_kg) filter (where d.record_date >= w.week_start - 1 and d.record_date <= w.week_start + 1) as start_weight_kg,
+             min(d.weight_kg) filter (where d.record_date >= w.week_start + 5 and d.record_date <= w.week_start + 7) as end_weight_kg
+           from week_range w
+           left join fitfuel.daily_record d
+             on d.user_id = $1 and d.deleted_at is null and d.weight_kg is not null
+           group by w.week_start
+         ),
+         summary as (
+           select date_trunc('week', record_date)::date as week_start,
+                  round((sum(calorie_balance) / 7700.0)::numeric, 3) as theoretical_weight_change_kg
+           from fitfuel.daily_record
+           where user_id = $1 and deleted_at is null
+           group by 1
+         )
+         select to_char(w.week_start, 'YYYY-MM-DD') as week_start,
+                b.start_weight_kg, b.end_weight_kg, s.theoretical_weight_change_kg
+         from week_range w
+         left join boundary b on b.week_start = w.week_start
+         left join summary s on s.week_start = w.week_start
+         order by w.week_start desc
+         limit 12`,[user.id]
       ),
       prisma.activity_period_total.findUnique({
         where:{
@@ -69,8 +128,7 @@ export async function GET(request:Request){
     const actualTdee=rows.length>1?avgIntake+actualLoss*7700/Math.max(1,days):avgTdee;
     const target=Number(profile.rows[0]?.target_weight_kg ?? latestWeight ?? 0);
     const weeklyRate=Math.max(0,average("calorie_balance")*7/7700);
-    const weeksRemaining=weeklyRate>0&&latestWeight?Math.max(0,(Number(latestWeight)-target)/weeklyRate):null;
-    const estimatedDate=weeksRemaining!==null?new Date(Date.now()+weeksRemaining*7*86400000).toISOString().slice(0,10):null;
+    const estimatedDate=estimateGoalDate(rows,periodStart,target);
     return NextResponse.json({
       range:`${days}d`,records:rows,weekly:weekly.rows.map(numbers),
       profile:profile.rowCount?numbers(profile.rows[0]):null,

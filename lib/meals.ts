@@ -1,13 +1,8 @@
 import type { PrismaQueryClient } from "@/lib/db";
 import { ApiError } from "@/lib/http";
 import { recalculateDailyRecord } from "@/lib/nutrition";
-
-export const mealNames: Record<string, [string, number]> = {
-  breakfast: ["早餐", 1],
-  lunch: ["午餐", 2],
-  dinner: ["晚餐", 3],
-  snack: ["加餐", 4]
-};
+import { mealLabel, mealOrder, mealType } from "@/lib/meal-types";
+export { mealLabel, mealOrder, mealType } from "@/lib/meal-types";
 
 export type MealFood = {
   id?: number;
@@ -34,8 +29,8 @@ export async function addFoodToMeal(
     source: "database" | "user" | "ai";
   }
 ) {
-  const config = mealNames[input.mealType];
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !config) {
+  const order = mealOrder(input.mealType);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !order || order < 1 || order > 12) {
     throw new ApiError(400, "餐次或日期无效");
   }
   const record = await client.query(
@@ -47,14 +42,14 @@ export async function addFoodToMeal(
   const dailyId = Number(record.rows[0].id);
   let meal = await client.query(
     `select id from fitfuel.meal
-     where daily_record_id=$1 and meal_type=$2 and deleted_at is null limit 1`,
-    [dailyId, input.mealType]
+     where daily_record_id=$1 and sort_order in ($2,$3) and deleted_at is null limit 1`,
+    [dailyId, order, order * 10]
   );
   if (!meal.rowCount) {
     meal = await client.query(
       `insert into fitfuel.meal(daily_record_id,meal_type,display_name,sort_order)
        values($1,$2,$3,$4) returning id`,
-      [dailyId, input.mealType, config[0], config[1]]
+      [dailyId, mealType(order), mealLabel(order), order]
     );
   }
   const food = input.food;

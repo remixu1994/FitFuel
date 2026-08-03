@@ -20,7 +20,7 @@ const navigation = [
   { href: "/activity", label: "运动消耗", Icon: Dumbbell },
   { href: "/activity/history", label: "运动记录", Icon: History },
   { href: "/sync/elevatine", label: "AI 识别记录", Icon: ScanLine, badge: "AI" },
-  { href: "/stats", label: "营养分析", Icon: BarChart3 },
+  { href: "/calendar", label: "统计", Icon: BarChart3 },
   { href: "/settings", label: "设置", Icon: Settings }
 ] as const;
 

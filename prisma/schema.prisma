@@ -462,6 +462,7 @@ model user_profile {
   initial_weight_kg Decimal  @db.Decimal(5, 2)
   target_weight_kg  Decimal  @db.Decimal(5, 2)
   activity_level    String   @default("moderate") @db.VarChar(24)
+  meal_count        Int      @default(3) @db.SmallInt
   timezone          String   @default("Asia/Shanghai") @db.VarChar(64)
   created_at        DateTime @default(now()) @db.Timestamptz(6)
   updated_at        DateTime @default(now()) @db.Timestamptz(6)

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api, chinaDate, shiftDate } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
+import LineChart from "@/components/LineChart";
 import { ExportDrawer, ImportDrawer } from "./DataTransferDrawers";
 
 type StatRecord={record_date:string;weight_kg:number|null;calories_consumed:number;meal_calories:number;manual_calories:number|null;imported_calories:number|null;calories_source:string;activity_calories:number;bmr:number;tef:number;tdee:number;calorie_balance:number};
@@ -71,7 +72,7 @@ export default function StatsPage(){
       {loading?<div className="page-loading"><LoaderCircle/> 正在计算真实趋势…</div>:<div className="stats-content">
         <section className="status-overview"><div className="status-copy"><p>当前进度</p><div className="current-weight"><strong>{current||"—"}</strong><span>kg</span></div><div className="weight-change"><TrendingDown/> 较初始下降 {Math.max(0,initial-current).toFixed(1)} kg</div></div>
           <div className="target-rail"><div className="rail-labels"><span>初始 {initial||"—"} kg</span><b>目标 {target||"—"} kg</b></div><div className="rail"><i style={{width:`${progress}%`}}><em/></i></div><div className="rail-foot"><span>已完成 <b>{Math.round(progress)}%</b></span><span>还差 <b>{Math.max(0,current-target).toFixed(1)} kg</b></span></div></div>
-          <div className="finish-estimate"><span>预计达到目标</span><strong>{summary?.estimatedDate??"数据积累中"}</strong><small>按当前平均热量差预测</small><button onClick={()=>router.push("/settings")}>查看目标计划 <ArrowRight/></button></div>
+          <div className="finish-estimate"><span>预计达到目标</span><strong>{summary?.estimatedDate??(data?.records.length?"暂无法预测":"数据积累中")}</strong><small>按实际体重趋势预测</small><button onClick={()=>router.push("/settings")}>查看目标计划 <ArrowRight/></button></div>
         </section>
         {summary&&<section className="period-activity-summary">
           <div className="period-summary-heading">
@@ -96,7 +97,7 @@ export default function StatsPage(){
             <div className="model-lines"><div><span>理论 TDEE</span><b>{summary?.averageTdee??0} kcal</b></div><div><span>实际 TDEE</span><b>{summary?.actualTdee??0} kcal</b></div><div className="difference"><span>模型偏差</span><b><ArrowDownRight/> {(summary?.actualTdee??0)-(summary?.averageTdee??0)} kcal</b></div></div>
             <div className="model-note"><Sparkles/><span>{(data?.records.length??0)<7?"至少记录 7 天后，模型会给出更可靠的调整建议。":"模型已根据你的真实体重变化完成本区间校准。"}</span></div>
           </aside></section>
-        <section className="lower-grid"><div className="weekly-panel"><div className="panel-head"><div><p>WEEKLY VELOCITY</p><h2>每周减脂速度</h2></div></div><div className="week-bars">{(data?.weekly??[]).slice(0,6).reverse().map((week,index)=>{const change=week.start_weight_kg&&week.end_weight_kg?Number(week.start_weight_kg)-Number(week.end_weight_kg):Number(week.theoretical_weight_change_kg);return <div key={week.week_start}><span><i style={{height:`${Math.min(100,Math.max(5,change/.7*100))}%`}}/></span><b>-{Math.max(0,change).toFixed(2)} kg</b><small>W{index+1}</small></div>})}</div><div className="speed-note"><span>健康减脂区间</span><i/><small>0.4–0.7 kg/周</small></div></div>
+        <section className="lower-grid"><div className="weekly-panel"><div className="panel-head"><div><p>WEEKLY VELOCITY</p><h2>每周减脂速度</h2></div></div><div className="week-bars">{(data?.weekly??[]).slice(0,6).reverse().map((week,index)=>{const hasStart=week.start_weight_kg!=null;const hasEnd=week.end_weight_kg!=null;const loss=hasStart&&hasEnd?Number(week.start_weight_kg)-Number(week.end_weight_kg):null;const theoretical=Number(week.theoretical_weight_change_kg??0);const kind=loss===null?(hasStart?"pending":theoretical>0?"estimated":"empty"):loss>0?"loss":loss<0?"gain":"flat";const height=loss===null?(kind==="estimated"?Math.min(100,Math.max(8,theoretical/.7*100)):0):Math.min(100,Math.max(8,Math.abs(loss)/.7*100));const barBg=kind==="gain"?"linear-gradient(#f2b98b,#e07b3c)":kind==="flat"?"#c9d2cc":undefined;return <div key={week.week_start}><span>{kind!=="pending"&&kind!=="empty"&&<i style={{height:`${height}%`,...(barBg?{background:barBg}:{})}}/>}</span>{kind==="loss"?<b>-{(loss??0).toFixed(2)} kg</b>:kind==="gain"?<b className="gain">+{Math.abs(loss??0).toFixed(2)} kg</b>:kind==="flat"?<b className="flat">持平</b>:kind==="estimated"?<b>-{theoretical.toFixed(2)} kg</b>:<b>—</b>}<small>W{index+1}</small></div>})}</div><div className="speed-note"><span>健康减脂区间</span><i/><small>0.4–0.7 kg/周</small></div></div>
           <div className="records-panel"><div className="panel-head"><div><p>RECENT LOGS</p><h2>最近记录</h2></div><button onClick={()=>setFormOpen(true)}><Plus/> 新增</button></div><div className="record-table"><div className="table-head"><span>日期</span><span>体重</span><span>摄入</span><span>活动</span><span>热量差</span></div>{(data?.records??[]).slice(-5).reverse().map(record=><div className="table-row" key={record.record_date}><span>{displayDate(record.record_date)}</span><b>{record.weight_kg??"—"} kg</b><span className="intake-source">{record.calories_consumed}<small>{sourceLabel(record.calories_source)}</small></span><span>{record.activity_calories}</span><strong>{record.calorie_balance>=0?"-":"+"}{Math.abs(Math.round(record.calorie_balance))} kcal</strong></div>)}</div></div>
         </section>
       </div>}
@@ -180,13 +181,20 @@ function TrendChart({records,metric,range}:{records:StatRecord[];metric:MetricKi
   const width=760,height=240,padX=36,padY=24,count=Math.max(1,records.length-1);
   if(metric==="weight"){
     const valid=records.filter(record=>record.weight_kg);
-    if(!valid.length)return <div className="chart-empty"><Weight/><b>暂无体重记录</b></div>;
-    const min=Math.min(...valid.map(r=>Number(r.weight_kg)))-.3,max=Math.max(...valid.map(r=>Number(r.weight_kg)))+.3,span=Math.max(.1,max-min);
-    const points=valid.map((r,i)=>({x:padX+i*(width-padX*2)/Math.max(1,valid.length-1),y:padY+(max-Number(r.weight_kg))/span*(height-padY*2)}));
-    const ticks=chartTickIndexes(valid.length,range);
-    const path=points.map((p,i)=>`${i?"L":"M"}${p.x},${p.y}`).join(" ");
-    const area=`${path} L${points.at(-1)?.x},${height-padY} L${points[0].x},${height-padY} Z`;
-    return <div className="chart-wrap"><svg viewBox={`0 0 ${width} ${height}`}><defs><linearGradient id="weightArea" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#27ad68" stopOpacity=".22"/><stop offset="1" stopColor="#27ad68" stopOpacity="0"/></linearGradient></defs>{[0,1,2,3].map(i=><line key={i} x1={padX} x2={width-padX} y1={padY+i*(height-padY*2)/3} y2={padY+i*(height-padY*2)/3} stroke="#edf1ef" strokeDasharray="4 5"/>)}<path d={area} fill="url(#weightArea)"/><path d={path} fill="none" stroke="#18a85d" strokeWidth="3"/>{points.map((point,index)=><g key={index}><circle cx={point.x} cy={point.y} r="4" fill="#fff" stroke="#18a85d" strokeWidth="2"/>{ticks.has(index)&&<text x={point.x} y={height-5} textAnchor="middle">{displayDate(valid[index].record_date)}</text>}</g>)}</svg></div>;
+    return <LineChart
+      color="#18a85d"
+      autoScale
+      yUnit="kg"
+      empty={<div className="chart-empty"><Weight/><b>暂无体重记录</b></div>}
+      data={valid.map(record=>({
+        key:record.record_date,
+        label:displayDate(record.record_date),
+        title:displayDate(record.record_date),
+        valueText:Number(record.weight_kg).toFixed(1),
+        unit:"kg",
+        value:Number(record.weight_kg)
+      }))}
+    />;
   }
   const max=Math.max(3000,...records.map(r=>Math.max(r.calories_consumed,r.tdee)));
   const ticks=chartTickIndexes(records.length,range);

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { jsonError } from "@/lib/http";
+import { mealLabel, mealOrder } from "@/lib/meal-types";
 export const dynamic = "force-dynamic";
 
 type MealItem = {
@@ -14,6 +15,8 @@ type MealItem = {
   carbohydrate: number;
   fat: number;
   dietaryFiber: number;
+  source?: string;
+  catalogExists?: boolean;
 };
 
 type Meal = {
@@ -86,9 +89,10 @@ export async function GET(request: Request) {
       db.query(
         `select to_char(d.record_date, 'YYYY-MM-DD') as date,
                 m.id as meal_id,m.meal_type,m.display_name,m.sort_order,
-                mi.id as item_id,mi.food_name_snapshot,mi.quantity,mi.unit,
+                mi.id as item_id,mi.food_name_snapshot,mi.quantity,mi.unit,mi.source as item_source,
                 mi.calories_snapshot,mi.protein_snapshot,mi.carbohydrate_snapshot,
-                mi.fat_snapshot,mi.dietary_fiber_snapshot
+                mi.fat_snapshot,mi.dietary_fiber_snapshot,
+                exists(select 1 from food_info.food f where f.status=1 and lower(f.name)=lower(mi.food_name_snapshot)) as catalog_exists
          from fitfuel.daily_record d
          join fitfuel.meal m
            on m.daily_record_id=d.id and m.deleted_at is null
@@ -130,14 +134,15 @@ export async function GET(request: Request) {
       const row = numbers(raw);
       const day = byDate.get(row.date);
       if (!day) continue;
-      const mealKey = `${row.date}:${row.meal_id}`;
+      const order = mealOrder(String(row.meal_type)) ?? Number(row.sort_order);
+      const mealKey = `${row.date}:${order || row.meal_id}`;
       let meal = meals.get(mealKey);
       if (!meal) {
         meal = {
           id: Number(row.meal_id),
-          type: row.meal_type,
-          name: row.display_name,
-          sortOrder: Number(row.sort_order),
+          type: `meal_${order || row.sort_order}`,
+          name: order ? mealLabel(order) : row.display_name,
+          sortOrder: order || Number(row.sort_order),
           items: []
         };
         meals.set(mealKey, meal);
@@ -147,6 +152,8 @@ export async function GET(request: Request) {
         meal.items.push({
           id: Number(row.item_id),
           name: row.food_name_snapshot,
+          source: row.item_source,
+          catalogExists: row.catalog_exists,
           quantity: Number(row.quantity),
           unit: row.unit,
           calories: Number(row.calories_snapshot),

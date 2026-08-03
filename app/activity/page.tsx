@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
+import LineChart from "@/components/LineChart";
 import styles from "./activity.module.css";
 
 type User = { id:number; email:string; displayName:string; role:string };
@@ -38,7 +39,7 @@ const nav = [
   [ClipboardList,"饮食记录","/records"],
   [Dumbbell,"运动消耗","/activity"],
   [ScanLine,"AI 识别记录","/sync/elevatine"],
-  [BarChart3,"营养分析","/stats"],
+  [BarChart3,"体重分析","/stats"],
   [ClipboardList,"报告统计","/stats"],
   [Heart,"我的收藏","#"],
   [Settings,"设置","/settings"]
@@ -342,41 +343,18 @@ function ManualActivityModal({initialDate,onClose,onSaved}:{initialDate:string;o
 }
 
 function BurnChart({days}:{days:Day[]}){
-  const [hovered,setHovered]=useState<number|null>(null);
   if(!days.length)return <div className={styles.chartEmpty}><Zap/><b>暂无消耗趋势</b><span>选择其他时间范围或先同步 COROS。</span></div>;
-  const width=1000,height=270,padX=44,padTop=20,padBottom=38;
-  const max=Math.max(100,...days.map(day=>day.caloriesKcal));
-  const points=days.map((day,index)=>({
-    x:days.length===1?width/2:padX+index*(width-padX*2)/(days.length-1),
-    y:padTop+(max-day.caloriesKcal)/max*(height-padTop-padBottom)
-  }));
-  const path=points.map((point,index)=>`${index?"L":"M"}${point.x.toFixed(2)},${point.y.toFixed(2)}`).join(" ");
-  const area=`${path} L${points.at(-1)?.x},${height-padBottom} L${points[0].x},${height-padBottom} Z`;
-  const labelStep=Math.max(1,Math.ceil(days.length/7));
-  const hitWidth=(width-padX*2)/Math.max(1,days.length-1);
-  const tooltipWidth=176,tooltipHeight=56;
-  const hoveredPoint=hovered===null?null:points[hovered];
-  const tooltipX=hoveredPoint===null?0:Math.min(width-tooltipWidth/2-8,Math.max(tooltipWidth/2+8,hoveredPoint.x));
-  const tooltipBelow=hoveredPoint!==null&&hoveredPoint.y<padTop+tooltipHeight+16;
-  const tooltipY=hoveredPoint===null?0:(tooltipBelow?hoveredPoint.y+15:hoveredPoint.y-tooltipHeight-15);
-  return <div className={styles.chart}>
-    <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="每日运动消耗趋势">
-      <defs><linearGradient id="burnArea" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#16a65d" stopOpacity=".22"/><stop offset="1" stopColor="#16a65d" stopOpacity="0"/></linearGradient></defs>
-      {[0,1,2,3].map(index=><line key={index} x1={padX} x2={width-padX} y1={padTop+index*(height-padTop-padBottom)/3} y2={padTop+index*(height-padTop-padBottom)/3} stroke="#e7eeea" strokeDasharray="4 7"/>)}
-      <path d={area} fill="url(#burnArea)"/><path d={path} fill="none" stroke="#16a65d" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-      {points.map((point,index)=><g key={days[index].date} onMouseEnter={()=>setHovered(index)} onMouseLeave={()=>setHovered(null)} className={styles.point}>
-        <rect x={Math.max(padX,point.x-hitWidth/2)} y={padTop} width={Math.min(width-padX,point.x+hitWidth/2)-Math.max(padX,point.x-hitWidth/2)} height={height-padTop-padBottom}/>
-        <circle cx={point.x} cy={point.y} r={hovered===index?7:4} fill="#fff" stroke="#16a65d" strokeWidth="3"/>
-        {(index%labelStep===0||index===days.length-1)&&<text x={point.x} y={height-9} textAnchor="middle">{days[index].date.slice(5)}</text>}
-      </g>)}
-      {hovered!==null&&hoveredPoint&&<g className={styles.tooltipSvg} transform={`translate(${tooltipX-tooltipWidth/2} ${tooltipY})`}>
-        <rect width={tooltipWidth} height={tooltipHeight} rx="10"/>
-        <text x="13" y="19" className={styles.tooltipDate}>{formatDate(days[hovered].date)} · {days[hovered].activityCount} 次活动</text>
-        <text x="13" y="43" className={styles.tooltipValue}>{days[hovered].caloriesKcal.toFixed(2)}<tspan> kcal</tspan></text>
-        <path d={tooltipBelow?`M ${tooltipWidth/2-7} 0 L ${tooltipWidth/2} -7 L ${tooltipWidth/2+7} 0 Z`:`M ${tooltipWidth/2-7} ${tooltipHeight} L ${tooltipWidth/2} ${tooltipHeight+7} L ${tooltipWidth/2+7} ${tooltipHeight} Z`}/>
-      </g>}
-    </svg>
-  </div>;
+  return <LineChart
+    yUnit="kcal"
+    data={days.map(day=>({
+      key:day.date,
+      label:day.date.slice(5),
+      title:`${formatDate(day.date)} · ${day.activityCount} 次活动`,
+      valueText:day.caloriesKcal.toFixed(2),
+      unit:"kcal",
+      value:day.caloriesKcal
+    }))}
+  />;
 }
 
 function formatDate(value?:string|null){return value?value.slice(5).replace("-","/"):"—";}

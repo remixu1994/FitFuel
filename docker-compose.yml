@@ -10,9 +10,13 @@ services:
     environment:
       - NODE_ENV=production
       - HOSTNAME=0.0.0.0
+      # 上传根目录 = 容器内挂载点（覆盖 .env 中的默认路径）
+      - PRIVATE_UPLOAD_DIR=/app/uploads
     volumes:
-      # Persist private uploads (Elavatine images)
-      - fitfuel_private:/app/.private
+      # 宿主机指定目录 → 容器上传目录（Elavatine 图片等）
+      # 默认挂载 compose 文件旁的 ./uploads；改成你的绝对路径即可，例如：
+      #   - /opt/fitfuel/uploads:/app/uploads
+      - ./uploads:/app/uploads
 
-volumes:
-  fitfuel_private:
+# 说明：旧版本使用命名卷 fitfuel_private 持久化上传图片，现已改为宿主机目录挂载。
+# 升级后如需清理旧卷：docker volume rm fitfuel_private

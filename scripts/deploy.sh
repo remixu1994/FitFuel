@@ -15,6 +15,16 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
+# 准备上传目录（与 docker-compose.yml 的挂载路径保持一致）
+# 容器内以 uid 1001 (nextjs) 运行，宿主机目录必须对该 uid 可写
+UPLOAD_DIR="${UPLOAD_DIR:-./uploads}"
+mkdir -p "$UPLOAD_DIR"
+if ! chown -R 1001:1001 "$UPLOAD_DIR" 2>/dev/null; then
+  echo "WARN: 无法自动设置 $UPLOAD_DIR 属主（可能需要 root/sudo）。"
+  echo "      请手动执行: sudo chown -R 1001:1001 $UPLOAD_DIR"
+fi
+echo ">>> Upload directory ready: $UPLOAD_DIR"
+
 # 拉取最新镜像
 echo ">>> Pulling latest image..."
 docker compose -f "$COMPOSE_FILE" pull app

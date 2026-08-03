@@ -91,6 +91,36 @@ Dockerfile (多阶段构建)
 - **运行用户**: `nextjs` (uid 1001)，非 root
 - **暴露端口**: `3000`
 
+### 私有上传目录（Elavatine 图片）
+
+Elavatine 上传图片的根目录由 `PRIVATE_UPLOAD_DIR` 控制。Docker 部署中，
+**docker-compose.yml 将宿主机目录直接挂载到容器**，并让应用指向该挂载点：
+
+```yaml
+environment:
+  - PRIVATE_UPLOAD_DIR=/app/uploads
+volumes:
+  - ./uploads:/app/uploads   # 宿主机指定目录 → 容器上传目录
+```
+
+- **默认宿主机路径**：compose 文件旁的 `./uploads`（即 `/opt/fitfuel/uploads`）。
+  想用别的目录，改 compose 里的挂载路径即可（例如 `/data/fitfuel/uploads:/app/uploads`）。
+- **权限要求**：容器内以非 root 用户 `nextjs`（uid 1001）运行，
+  **宿主机挂载目录必须对该 uid 可写**。`scripts/deploy.sh` 会自动 `mkdir -p` 并
+  `chown 1001:1001`；手动部署时执行一次：
+
+```bash
+mkdir -p /opt/fitfuel/uploads
+sudo chown -R 1001:1001 /opt/fitfuel/uploads
+```
+
+- 镜像已预创建 `/app/uploads` 和 `/app/.private` 并授权给 `nextjs`，
+  因此即便使用命名卷（而非宿主目录挂载）也能获得正确属主。
+- 裸机部署（非 Docker）时保持默认 `PRIVATE_UPLOAD_DIR=.private/elevatine-imports` 即可。
+
+> **升级自旧版本**：旧 compose 使用命名卷 `fitfuel_private`。升级后该卷不再使用，
+> 如需清理：`docker volume rm fitfuel_private`（如有历史图片请先迁移到新挂载目录）。
+
 ## 环境变量
 
 ### 必需

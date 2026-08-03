@@ -30,14 +30,22 @@ export async function storeElevatineImage(batchId: bigint, file: File) {
   const mimeType = sniffMime(original);
   const sha256 = createHash("sha256").update(original).digest("hex");
   const folder = path.join(root(), batchId.toString());
-  await mkdir(folder, { recursive: true });
+  try {
+    await mkdir(folder, { recursive: true });
+  } catch {
+    throw new ApiError(500, `上传目录不可写（${root()}），请检查容器对私有上传目录的权限`);
+  }
   const storageKey = `${batchId}/${randomUUID()}.webp`;
   const output = await sharp(original)
     .rotate()
     .resize({ width: 2048, height: 4096, fit: "inside", withoutEnlargement: true })
     .webp({ quality: 88 })
     .toBuffer();
-  await writeFile(path.join(root(), storageKey), output);
+  try {
+    await writeFile(path.join(root(), storageKey), output);
+  } catch {
+    throw new ApiError(500, `上传图片写入失败（${root()}），请检查磁盘空间与目录权限`);
+  }
   return { storageKey, sha256, mimeType, sizeBytes: output.byteLength };
 }
 

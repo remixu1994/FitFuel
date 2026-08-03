@@ -31,6 +31,13 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs \
  && adduser --system --uid 1001 nextjs
 
+# Pre-create the upload directories owned by the runtime user:
+#   /app/.private — default path (PRIVATE_UPLOAD_DIR unset / bare metal)
+#   /app/uploads  — docker-compose bind mount target
+# Without these, `nextjs` (uid 1001) cannot mkdir the path itself,
+# and a fresh named volume mounted there would otherwise be root-owned.
+RUN mkdir -p /app/.private /app/uploads && chown -R nextjs:nodejs /app/.private /app/uploads
+
 # Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
 

@@ -21,6 +21,9 @@ Thumbs.db
 # private, short-lived upload data
 /.private/
 
+# docker-compose host upload directory
+/uploads/
+
 # local data and agent working notes
 /imports/
 /task_plan.md

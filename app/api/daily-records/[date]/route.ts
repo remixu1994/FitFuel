@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/auth";
 import { db, numbers } from "@/lib/db";
 import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
@@ -125,5 +125,56 @@ export async function DELETE(request: Request, context: { params: Promise<{ date
     );
     if (!result.rowCount) throw new ApiError(404,"记录不存在");
     return NextResponse.json({ok:true});
+  } catch (error) { return jsonError(error); }
+}
+export async function PATCH(request: Request, context: { params: Promise<{ date: string }> }) {
+  try {
+    assertSameOrigin(request);
+    const user = await requireUser();
+    const { date } = await context.params;
+    if (!datePattern.test(date)) throw new ApiError(400, "日期格式无效");
+    const body = await readJson<Record<string, unknown>>(request);
+    const weight = positiveNumber(body.weight, "体重");
+    const [existing, profileResult] = await Promise.all([
+      db.query(
+        `select id, calories_consumed, activity_calories
+         from fitfuel.daily_record where user_id=$1 and record_date=$2::date`,
+        [user.id, date]
+      ),
+      db.query(
+        "select height_cm,age,gender from fitfuel.user_profile where user_id=$1",
+        [user.id]
+      )
+    ]);
+    const profile = profileResult.rows[0];
+    const calcProfile = {
+      height: Number(profile.height_cm), age: Number(profile.age), gender: profile.gender
+    };
+    if (existing.rowCount) {
+      const row = existing.rows[0];
+      const values = calculateMetabolism(weight, Number(row.calories_consumed ?? 0), Number(row.activity_calories ?? 0), calcProfile);
+      await db.query(
+        `update fitfuel.daily_record
+         set weight_kg=$2, bmr=$3, tef=$4, tdee=$5, calorie_balance=$6,
+             deleted_at=null, updated_at=now()
+         where id=$1::bigint`,
+        [row.id, weight, values.bmr, values.tef, values.tdee, values.calorieBalance]
+      );
+      return NextResponse.json({ id: Number(row.id), ...values });
+    }
+    const values = calculateMetabolism(weight, 0, 0, calcProfile);
+    const inserted = await db.query(
+      `insert into fitfuel.daily_record
+       (user_id,record_date,weight_kg,calories_consumed,manual_calories,activity_calories,
+        bmr,tef,tdee,calorie_balance,note,calories_source)
+       values ($1,$2::date,$3,0,0,0,$4,$5,$6,$7,null,'manual')
+       on conflict (user_id,record_date) do update set
+         weight_kg=excluded.weight_kg,bmr=excluded.bmr,tef=excluded.tef,
+         tdee=excluded.tdee,calorie_balance=excluded.calorie_balance,
+         deleted_at=null,updated_at=now()
+       returning id`,
+      [user.id, date, weight, values.bmr, values.tef, values.tdee, values.calorieBalance]
+    );
+    return NextResponse.json({ id: Number(inserted.rows[0].id), ...values });
   } catch (error) { return jsonError(error); }
 }

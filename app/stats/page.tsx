@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Activity, Apple, ArrowDownRight, ArrowRight, CalendarDays, ChevronLeft, CircleGauge,
-  Calculator, Download, Dumbbell, Flame, Leaf, LoaderCircle, Plus, RotateCcw, Save,
+  Activity, Apple, ArrowDownRight, ArrowRight, CalendarDays, ChevronLeft, ChevronRight, CircleGauge,
+  Calculator, Download, Dumbbell, Flame, Leaf, LoaderCircle, Pencil, Plus, RotateCcw, Save,
   Sparkles, Target, TrendingDown, Upload, Utensils, Weight, X, Zap
 } from "lucide-react";
-import { api, chinaDate } from "@/lib/client";
+import { api, chinaDate, shiftDate } from "@/lib/client";
 import { AppSidebar } from "@/components/AppSidebar";
 import { ExportDrawer, ImportDrawer } from "./DataTransferDrawers";
 
@@ -23,6 +23,8 @@ type StatsData={
   };
 };
 type MetricKind="weight"|"calories";
+type WeekRow={date:string;weightKg:number|null;caloriesConsumed:number;activityCalories:number;bmr:number;tef:number;tdee:number;calorieBalance:number;hasRecord:boolean};
+type WeekData={start:string;end:string;rows:WeekRow[]};
 
 export default function StatsPage(){
   const router=useRouter();
@@ -34,6 +36,8 @@ export default function StatsPage(){
   const [importOpen,setImportOpen]=useState(false);
   const [exportOpen,setExportOpen]=useState(false);
   const [periodOpen,setPeriodOpen]=useState(false);
+  const [week,setWeek]=useState<WeekData|null>(null);
+  const [weekStart,setWeekStart]=useState<string|null>(null);
   const [error,setError]=useState("");
   async function load(){
     setLoading(true);setError("");
@@ -42,6 +46,18 @@ export default function StatsPage(){
     finally{setLoading(false);}
   }
   useEffect(()=>{void load();},[range]);
+  const loadWeek=useCallback(async()=>{
+    const start=weekStart??mondayOf(chinaDate());
+    try{setWeek(await api<WeekData>(`/api/stats/week?start=${start}`));}
+    catch{/* 保留上一次周表 */ }
+  },[weekStart]);
+  useEffect(()=>{void loadWeek();},[loadWeek]);
+  function moveWeek(direction:number){
+    const current=weekStart??mondayOf(chinaDate());
+    const next=shiftDate(current,direction*7);
+    if(next>chinaDate())return;
+    setWeekStart(next);
+  }
   const summary=data?.summary;
   const current=Number(summary?.currentWeight??data?.profile?.initial_weight_kg??0);
   const initial=Number(summary?.startWeight??data?.profile?.initial_weight_kg??current);
@@ -73,6 +89,7 @@ export default function StatsPage(){
           <Metric icon={<Flame/>} label="平均 TDEE" value={summary?.averageTdee??0} unit="kcal" note="Mifflin-St Jeor" tone="green"/>
           <Metric icon={<Zap/>} label="日均热量差" value={summary?.averageBalance??0} unit="kcal" note={`约 ${(summary?.weeklyRate??0).toFixed(2)} kg/周`} tone="violet"/>
         </section>
+        <section className="week-table-panel"><div className="panel-head"><div><p>WEEKLY DATA</p><h2>本周数据</h2><span>连续 7 天 · 点击体重可直接补录历史体重</span></div><div className="week-table-nav"><button onClick={()=>moveWeek(-1)} aria-label="上一周"><ChevronLeft/></button><b>{week?`${shortDate(week.start)} – ${shortDate(week.end)}`:"加载中…"}</b><button onClick={()=>moveWeek(1)} aria-label="下一周" disabled={!weekStart}><ChevronRight/></button>{weekStart&&<button className="week-reset" onClick={()=>setWeekStart(null)}>回到本周</button>}</div></div><div className="week-table"><div className="week-table-inner"><div className="week-table-head"><span>日期</span><span>摄入(kcal)</span><span>活动消耗(kcal)</span><span>体重(kg)</span><span>基础代谢(kcal)</span><span>食物热效应(kcal)</span><span>总消耗(kcal)</span><span>热量差(kcal)</span></div>{(week?.rows??[]).map(row=><div className={`week-table-row${row.hasRecord?"":" blank"}`} key={row.date}><span className="date">{shortDate(row.date)}</span><span>{row.hasRecord?row.caloriesConsumed:"—"}</span><span>{row.hasRecord?row.activityCalories:"—"}</span><WeightEditor date={row.date} value={row.weightKg} onSaved={async()=>{await loadWeek();}}/><span>{row.hasRecord?row.bmr.toFixed(1):"—"}</span><span>{row.hasRecord?row.tef.toFixed(1):"—"}</span><span>{row.hasRecord?row.tdee.toFixed(1):"—"}</span><strong className={row.calorieBalance>=0?"deficit":"surplus"}>{row.hasRecord?`${row.calorieBalance>=0?"-":"+"}${Math.abs(row.calorieBalance).toFixed(1)}`:"—"}</strong></div>)}{week&&(()=>{const logged=week.rows.filter(r=>r.hasRecord);const mean=(key:keyof Pick<WeekRow,"caloriesConsumed"|"activityCalories"|"bmr"|"tef"|"tdee"|"calorieBalance">)=>logged.length?logged.reduce((s,r)=>s+Number(r[key]),0)/logged.length:0;const weights=logged.map(r=>r.weightKg).filter((v):v is number=>v!=null);const avgWeight=weights.length?weights.reduce((a,b)=>a+b,0)/weights.length:null;const avgBalance=mean("calorieBalance");return <div className="week-table-foot"><span>日均</span><span>{mean("caloriesConsumed").toFixed(0)}</span><span>{mean("activityCalories").toFixed(0)}</span><span>{avgWeight!=null?avgWeight.toFixed(1):"—"}</span><span>{mean("bmr").toFixed(1)}</span><span>{mean("tef").toFixed(1)}</span><span>{mean("tdee").toFixed(1)}</span><strong className={avgBalance>=0?"deficit":"surplus"}>{avgBalance>=0?"-":"+"}{Math.abs(avgBalance).toFixed(1)}</strong></div>;})()}</div></div></section>
         <section className="analytics-grid"><div className="trend-panel"><div className="panel-head"><div><p>TREND</p><h2>{metric==="weight"?"体重趋势":"热量趋势"}</h2><span>{data?.records.length?"数据来自你的每日记录":"记录数据后将在这里生成趋势"}</span></div><div className="trend-controls"><div className="metric-tabs"><button className={metric==="weight"?"active":""} onClick={()=>setMetric("weight")}>体重</button><button className={metric==="calories"?"active":""} onClick={()=>setMetric("calories")}>热量</button></div><div className="range-tabs">{["7d","30d","90d"].map(value=><button key={value} className={range===value?"active":""} onClick={()=>setRange(value)}>{value.replace("d","天")}</button>)}</div></div></div>
           <TrendChart records={data?.records??[]} metric={metric} range={range}/></div>
           <aside className="model-panel"><div className="panel-head"><div><p>ADAPTIVE MODEL</p><h2>个人消耗模型</h2><span>基于所选区间真实体重反馈</span></div><CircleGauge/></div><div className="model-gauge"><div><strong>{data?.records.length?Math.min(96,50+data.records.length*3):0}</strong><span>%</span><small>模型可信度</small></div></div>
@@ -84,7 +101,7 @@ export default function StatsPage(){
         </section>
       </div>}
     </main>
-    {formOpen&&<RecordDrawer latestWeight={current||Number(data?.profile?.initial_weight_kg??70)} onClose={()=>setFormOpen(false)} onSaved={async()=>{setFormOpen(false);await load();}}/>}
+    {formOpen&&<RecordDrawer latestWeight={current||Number(data?.profile?.initial_weight_kg??70)} profile={data?.profile??null} onClose={()=>setFormOpen(false)} onSaved={async()=>{setFormOpen(false);await load();await loadWeek();}}/>}
     {importOpen&&<ImportDrawer onClose={()=>setImportOpen(false)} onImported={load}/>}
     {exportOpen&&<ExportDrawer currentRange={range} onClose={()=>setExportOpen(false)}/>}
     {periodOpen&&summary&&<PeriodActivityModal summary={summary} onClose={()=>setPeriodOpen(false)} onSaved={async()=>{setPeriodOpen(false);await load();}}/>}
@@ -176,9 +193,59 @@ function TrendChart({records,metric,range}:{records:StatRecord[];metric:MetricKi
   return <div className="chart-wrap"><svg viewBox={`0 0 ${width} ${height}`}>{[0,1,2,3].map(i=><line key={i} x1={padX} x2={width-padX} y1={padY+i*(height-padY*2)/3} y2={padY+i*(height-padY*2)/3} stroke="#edf1ef" strokeDasharray="4 5"/>)}{records.map((r,i)=>{const x=padX+i*(width-padX*2)/count;return <g key={r.record_date}><rect x={x-9} y={height-padY-r.calories_consumed/max*(height-padY*2)} width="8" height={r.calories_consumed/max*(height-padY*2)} rx="3" fill="#f3a05e"/><rect x={x+2} y={height-padY-r.tdee/max*(height-padY*2)} width="8" height={r.tdee/max*(height-padY*2)} rx="3" fill="#28ae69"/>{ticks.has(i)&&<text x={x} y={height-5} textAnchor="middle">{displayDate(r.record_date)}</text>}</g>})}</svg><div className="chart-legend"><span><i style={{background:"#f3a05e"}}/>摄入</span><span><i style={{background:"#28ae69"}}/>TDEE</span></div></div>;
 }
 
-function RecordDrawer({latestWeight,onClose,onSaved}:{latestWeight:number;onClose:()=>void;onSaved:()=>Promise<void>}){
-  const [weight,setWeight]=useState(latestWeight);const [intake,setIntake]=useState(0);const [activity,setActivity]=useState(0);const [saving,setSaving]=useState(false);const [error,setError]=useState("");
-  const bmr=10*weight+6.25*175-5*32+5,tef=intake*.08,tdee=bmr+activity+tef,deficit=tdee-intake;
-  async function save(){setSaving(true);setError("");try{await api(`/api/daily-records/${chinaDate()}`,{method:"PUT",body:JSON.stringify({weight,caloriesConsumed:intake,activityCalories:activity})});await onSaved();}catch(error){setError(error instanceof Error?error.message:"保存失败");}finally{setSaving(false);}}
-  return <div className="record-backdrop" onMouseDown={onClose}><aside className="record-drawer" onMouseDown={e=>e.stopPropagation()}><div className="drawer-head"><div><p>DAILY CHECK-IN</p><h2>记录今日数据</h2><span>计算在服务端复核后保存</span></div><button onClick={onClose}><X/></button></div>{error&&<div className="form-error">{error}</div>}<label>日期<div><CalendarDays/><input value={chinaDate()} readOnly/></div></label><label>今日体重<div><Weight/><input type="number" step=".1" value={weight} onChange={e=>setWeight(+e.target.value)}/><span>kg</span></div></label><label>摄入热量<div><Utensils/><input type="number" value={intake} onChange={e=>setIntake(+e.target.value)}/><span>kcal</span></div></label><label>活动消耗<div><Activity/><input type="number" value={activity} onChange={e=>setActivity(+e.target.value)}/><span>kcal</span></div></label><div className="calculation"><p>预估结果</p><div><span>基础代谢<b>{Math.round(bmr)} kcal</b></span><span>食物热效应<b>{Math.round(tef)} kcal</b></span><span>总消耗<b>{Math.round(tdee)} kcal</b></span><span className="deficit">热量差<b>{Math.round(deficit)} kcal</b></span></div></div><button className="save-record" disabled={saving} onClick={save}>{saving?"正在保存…":"保存今日记录"} <ArrowRight/></button></aside></div>;
+
+function shortDate(value:string){const parts=value.slice(0,10).split("-");return `${Number(parts[1])}.${Number(parts[2])}`;}
+function mondayOf(value:string){
+  const date=new Date(`${value}T00:00:00.000Z`);
+  const day=date.getUTCDay();
+  date.setUTCDate(date.getUTCDate()+(day===0?-6:1-day));
+  return date.toISOString().slice(0,10);
+}
+
+function WeightEditor({date,value,onSaved}:{date:string;value:number|null;onSaved:()=>Promise<void>}){
+  const [editing,setEditing]=useState(false);
+  const [draft,setDraft]=useState(value!=null?String(value):"");
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  if(!editing)return <button type="button" className={`weight-edit${value==null?" empty":""}`} onClick={()=>{setDraft(value!=null?String(value):"");setEditing(true);}}>{value!=null?`${Number(value).toFixed(1)} kg`:"补录体重"}<Pencil/></button>;
+  async function save(){
+    const parsed=Number(draft);
+    if(!Number.isFinite(parsed)||parsed<=0){setError("请输入有效体重");return;}
+    setSaving(true);setError("");
+    try{
+      await api(`/api/daily-records/${date}`,{method:"PATCH",body:JSON.stringify({weight:parsed})});
+      setEditing(false);await onSaved();
+    }catch(error){setError(error instanceof Error?error.message:"保存失败");}
+    finally{setSaving(false);}
+  }
+  return <span className="weight-editor"><input type="number" step=".1" min="0" value={draft} autoFocus onChange={e=>setDraft(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")void save();if(e.key==="Escape")setEditing(false);}}/><button type="button" onClick={()=>void save()} disabled={saving}>{saving?"保存中":"保存"}</button><button type="button" className="cancel" onClick={()=>setEditing(false)}>取消</button>{error&&<small>{error}</small>}</span>;
+}
+
+function RecordDrawer({latestWeight,profile,onClose,onSaved}:{latestWeight:number;profile:Record<string,number|string>|null;onClose:()=>void;onSaved:()=>Promise<void>}){
+  const [date,setDate]=useState(chinaDate());
+  const [weight,setWeight]=useState(latestWeight);
+  const [intake,setIntake]=useState(0);
+  const [activity,setActivity]=useState(0);
+  const [saving,setSaving]=useState(false);
+  const [error,setError]=useState("");
+  const height=Number(profile?.height_cm??175),age=Number(profile?.age??32);
+  const genderOffset=profile?.gender==="female"?-161:5;
+  const bmr=10*weight+6.25*height-5*age+genderOffset,tef=intake*.08,tdee=bmr+activity+tef,deficit=tdee-intake;
+  useEffect(()=>{
+    let active=true;
+    (async()=>{
+      try{
+        const data=await api<{record:Record<string,number|string>|null}>(`/api/daily-records/${date}`);
+        if(!active)return;
+        if(data.record){
+          setWeight(data.record.weight_kg!=null?Number(data.record.weight_kg):latestWeight);
+          setIntake(Number(data.record.calories_consumed??0));
+          setActivity(Number(data.record.activity_calories??0));
+        }else{setWeight(latestWeight);setIntake(0);setActivity(0);}
+      }catch{/* 预填失败忽略 */ }
+    })();
+    return()=>{active=false;};
+  },[date,latestWeight]);
+  async function save(){setSaving(true);setError("");try{await api(`/api/daily-records/${date}`,{method:"PUT",body:JSON.stringify({weight,caloriesConsumed:intake,activityCalories:activity})});await onSaved();}catch(error){setError(error instanceof Error?error.message:"保存失败");}finally{setSaving(false);}}
+  return <div className="record-backdrop" onMouseDown={onClose}><aside className="record-drawer" onMouseDown={e=>e.stopPropagation()}><div className="drawer-head"><div><p>DAILY CHECK-IN</p><h2>记录数据</h2><span>可回填历史日期，已有数据自动带入</span></div><button onClick={onClose}><X/></button></div>{error&&<div className="form-error">{error}</div>}<label>日期<div><CalendarDays/><input type="date" max={chinaDate()} value={date} onChange={e=>{if(e.target.value)setDate(e.target.value);}}/></div></label><label>当日体重<div><Weight/><input type="number" step=".1" value={weight} onChange={e=>setWeight(+e.target.value)}/><span>kg</span></div></label><label>摄入热量<div><Utensils/><input type="number" value={intake} onChange={e=>setIntake(+e.target.value)}/><span>kcal</span></div></label><label>活动消耗<div><Activity/><input type="number" value={activity} onChange={e=>setActivity(+e.target.value)}/><span>kcal</span></div></label><div className="calculation"><p>预估结果</p><div><span>基础代谢<b>{Math.round(bmr)} kcal</b></span><span>食物热效应<b>{Math.round(tef)} kcal</b></span><span>总消耗<b>{Math.round(tdee)} kcal</b></span><span className="deficit">热量差<b>{Math.round(deficit)} kcal</b></span></div></div><button className="save-record" disabled={saving} onClick={save}>{saving?"正在保存…":"保存记录"} <ArrowRight/></button></aside></div>;
 }

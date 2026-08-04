@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "../lib/db";
-import { estimateFoodPortionWithMimo } from "../lib/mimo";
-import { calculateMetabolism } from "../lib/nutrition";
+import { prisma } from "../../src/server/db";
+import { estimateFoodPortionWithMimo } from "../../src/server/mimo";
+import { calculateMetabolism } from "../../src/shared/domain/nutrition";
 
 const commit = process.argv.includes("--commit");
 const email = process.argv

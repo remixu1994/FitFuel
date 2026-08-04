@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { db, numbers } from "@/lib/db";
-import { ApiError, jsonError } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { db, numbers } from "@/server/db";
+import { ApiError, jsonError } from "@/server/http";
 
 export async function GET(request:Request){
   try{

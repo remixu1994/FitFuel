@@ -7,9 +7,9 @@ import {
   Droplets, Dumbbell, Flame, Heart, Leaf, LoaderCircle, LogOut, Menu, Moon,
   ScanLine, Search, Settings, ShieldCheck, Sun, Utensils, X, Zap
 } from "lucide-react";
-import { api } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
-import { mealLabel, mealOrder } from "@/lib/meal-types";
+import { api } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
+import { mealLabel, mealOrder } from "@/shared/domain/meal-types";
 import styles from "./records.module.css";
 
 type User = { id:number; email:string; displayName:string; role:string };

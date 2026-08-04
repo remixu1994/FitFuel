@@ -1,9 +1,9 @@
-﻿import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { db, numbers } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
-import { calculateMetabolism } from "@/lib/nutrition";
-import { mealLabel, mealOrder } from "@/lib/meal-types";
+import { NextResponse } from "next/server";
+import { requireUser } from "@/server/auth";
+import { db, numbers } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
+import { calculateMetabolism } from "@/shared/domain/nutrition";
+import { mealLabel, mealOrder } from "@/shared/domain/meal-types";
 export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
@@ -12,7 +12,7 @@ export async function GET(_: Request, context: { params: Promise<{ date: string 
   try {
     const user = await requireUser();
     const { date } = await context.params;
-    if (!datePattern.test(date)) throw new ApiError(400, "日期格式无效");
+    if (!datePattern.test(date)) throw new ApiError(400, "??????");
     const [record, goal, profile, meals, water] = await Promise.all([
       db.query(
         `select id,record_date,weight_kg,calories_consumed,meal_calories,manual_calories,
@@ -88,11 +88,11 @@ export async function PUT(request: Request, context: { params: Promise<{ date: s
     assertSameOrigin(request);
     const user = await requireUser();
     const { date } = await context.params;
-    if (!datePattern.test(date)) throw new ApiError(400, "日期格式无效");
+    if (!datePattern.test(date)) throw new ApiError(400, "??????");
     const body = await readJson<Record<string, unknown>>(request);
-    const weight = positiveNumber(body.weight, "体重");
-    const activity = positiveNumber(body.activityCalories ?? 0, "活动消耗", true);
-    const intake = positiveNumber(body.caloriesConsumed ?? 0, "摄入热量", true);
+    const weight = positiveNumber(body.weight, "??");
+    const activity = positiveNumber(body.activityCalories ?? 0, "????", true);
+    const intake = positiveNumber(body.caloriesConsumed ?? 0, "????", true);
     const profileResult = await db.query(
       "select height_cm,age,gender from fitfuel.user_profile where user_id=$1",
       [user.id]
@@ -129,7 +129,7 @@ export async function DELETE(request: Request, context: { params: Promise<{ date
       "update fitfuel.daily_record set deleted_at=now(),updated_at=now() where user_id=$1 and record_date=$2::date and deleted_at is null",
       [user.id,date]
     );
-    if (!result.rowCount) throw new ApiError(404,"记录不存在");
+    if (!result.rowCount) throw new ApiError(404,"?????");
     return NextResponse.json({ok:true});
   } catch (error) { return jsonError(error); }
 }
@@ -138,9 +138,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ date:
     assertSameOrigin(request);
     const user = await requireUser();
     const { date } = await context.params;
-    if (!datePattern.test(date)) throw new ApiError(400, "日期格式无效");
+    if (!datePattern.test(date)) throw new ApiError(400, "??????");
     const body = await readJson<Record<string, unknown>>(request);
-    const weight = positiveNumber(body.weight, "体重");
+    const weight = positiveNumber(body.weight, "??");
     const [existing, profileResult] = await Promise.all([
       db.query(
         `select id, calories_consumed, activity_calories

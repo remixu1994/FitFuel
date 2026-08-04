@@ -5,8 +5,8 @@ import {
   Activity, CalendarDays, ChevronLeft, ChevronRight, Clock3, Dumbbell,
   Flame, LoaderCircle, RotateCcw, Search
 } from "lucide-react";
-import { AppSidebar } from "@/components/AppSidebar";
-import { api } from "@/lib/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
+import { api } from "@/web/client/client";
 import styles from "./history.module.css";
 
 type SportActivity = {

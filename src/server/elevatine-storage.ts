@@ -2,7 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
-import { ApiError } from "@/lib/http";
+import { ApiError } from "@/server/http";
 
 export const MAX_IMAGE_COUNT = 20;
 export const MAX_IMAGE_BYTES = 10 * 1024 * 1024;

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { assertSameOrigin, jsonError } from "@/lib/http";
-import { rollbackBatch } from "@/lib/elevatine-import";
+import { requireUser } from "@/server/auth";
+import { assertSameOrigin, jsonError } from "@/server/http";
+import { rollbackBatch } from "@/server/elevatine-import";
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ id: string }> };

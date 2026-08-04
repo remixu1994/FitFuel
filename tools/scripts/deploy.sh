@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # FitFuel 服务端部署脚本
-# 用法: ./scripts/deploy.sh
+# 用法: ./tools/scripts/deploy.sh
 
 set -euo pipefail
 
@@ -19,6 +19,7 @@ fi
 # 容器内以 uid 1001 (nextjs) 运行，宿主机目录必须对该 uid 可写
 UPLOAD_DIR="${UPLOAD_DIR:-./uploads}"
 mkdir -p "$UPLOAD_DIR"
+mkdir -p "./.runtime/logs" "./.runtime/imports" "./.runtime/uploads"
 if ! chown -R 1001:1001 "$UPLOAD_DIR" 2>/dev/null; then
   echo "WARN: 无法自动设置 $UPLOAD_DIR 属主（可能需要 root/sudo）。"
   echo "      请手动执行: sudo chown -R 1001:1001 $UPLOAD_DIR"
@@ -31,7 +32,7 @@ docker compose -f "$COMPOSE_FILE" pull app
 
 # 数据库迁移（如需要可取消注释）
 # echo ">>> Running database migrations..."
-# docker compose -f "$COMPOSE_FILE" run --rm app node scripts/init-db.mjs
+# docker compose -f "$COMPOSE_FILE" run --rm app node infra/database/scripts/init-db.mjs
 
 # 启动/更新服务
 echo ">>> Starting services..."

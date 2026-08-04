@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { ApiError } from "@/lib/http";
-import type { AiFoodResult } from "@/lib/mimo";
+import { ApiError } from "@/server/http";
+import type { AiFoodResult } from "@/server/mimo";
 
 type CandidatePayload = {
   version: 1;

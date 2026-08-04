@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getMimoConfig } from "@/lib/ai-config";
-import { normalizeFoodQuery, verifyCandidateToken } from "@/lib/ai-candidate";
-import { requireAdmin } from "@/lib/auth";
-import { transaction } from "@/lib/db";
-import { parseReviewedFood, type ReviewedFood } from "@/lib/food-validation";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
-import { addFoodToMeal } from "@/lib/meals";
+import { getMimoConfig } from "@/server/ai-config";
+import { normalizeFoodQuery, verifyCandidateToken } from "@/server/ai-candidate";
+import { requireAdmin } from "@/server/auth";
+import { transaction } from "@/server/db";
+import { parseReviewedFood, type ReviewedFood } from "@/server/food-validation";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
+import { addFoodToMeal } from "@/server/meals";
 export const dynamic = "force-dynamic";
 
 type ImportBody = {

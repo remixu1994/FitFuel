@@ -21,7 +21,7 @@ const client = new pg.Client({
 
 try {
   await client.connect();
-  const migrationsUrl = new URL("../database/migrations/", import.meta.url);
+const migrationsUrl = new URL("../migrations/", import.meta.url);
   const files = (await readdir(migrationsUrl))
     .filter((file) => file.endsWith(".sql"))
     .sort();

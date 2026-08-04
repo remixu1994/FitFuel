@@ -1,9 +1,9 @@
 import { File } from "node:buffer";
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
-import { prisma } from "../lib/db";
-import { storeElevatineImage } from "../lib/elevatine-storage";
-import { commitBatch, getBatchReview, parseBatch } from "../lib/elevatine-import";
+import { prisma } from "../../src/server/db";
+import { storeElevatineImage } from "../../src/server/elevatine-storage";
+import { commitBatch, getBatchReview, parseBatch } from "../../src/server/elevatine-import";
 
 async function main() {
   const folder = process.argv[2];
@@ -11,7 +11,7 @@ async function main() {
     ?.slice("--commit=".length).split(",").filter(Boolean);
   const year = Number(process.argv.find(value => value.startsWith("--year="))?.slice(7) || new Date().getFullYear());
 
-  if (!folder) throw new Error("Usage: tsx scripts/import-elevatine-folder.ts <folder> [--year=2026] [--commit=id,id]");
+  if (!folder) throw new Error("Usage: tsx tools/scripts/import-elevatine-folder.ts <folder> [--year=2026] [--commit=id,id]");
   const admin = await prisma.app_user.findFirst({
   where: { role: "admin", status: 1 },
   orderBy: { id: "asc" }

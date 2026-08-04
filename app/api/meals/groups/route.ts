@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
-import { transaction } from "@/lib/db";
-import { mealOrder } from "@/lib/meal-types";
+import { requireUser } from "@/server/auth";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
+import { transaction } from "@/server/db";
+import { mealOrder } from "@/shared/domain/meal-types";
 
 export async function DELETE(request: Request) {
   try {

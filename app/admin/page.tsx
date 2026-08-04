@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,7 +6,7 @@ import {
   ArrowLeft, Check, Copy, ImagePlus, KeyRound, Leaf, LoaderCircle, Plus, Power,
   RefreshCcw, Search, ShieldCheck, UserRound, UsersRound, X
 } from "lucide-react";
-import { api } from "@/lib/client";
+import { api } from "@/web/client/client";
 
 type ManagedUser = {
   id:number;email:string;display_name:string;role:string;status:number;
@@ -18,7 +18,7 @@ type UserForm = {
   gender:string;currentWeight:number;targetWeight:number;
 };
 type SharedFood={id:number;name:string;serving:string;gram_weight:number;calories:number;protein:number;carbohydrate:number;fat:number;dietary_fiber:number};
-type FoodCandidate=SharedFood & {confidence:number;quantity:number;unit:string};
+type FoodCandidate=SharedFood & {confidence:number;quantity:number;unit:string;gramWeight:number;serving_name?:string;gram_weight?:number};
 
 const emptyForm:UserForm={
   email:"",displayName:"",temporaryPassword:"",height:175,age:30,
@@ -39,9 +39,18 @@ export default function AdminPage(){
   const [foodQuery,setFoodQuery]=useState("");
   const [foodCandidate,setFoodCandidate]=useState<FoodCandidate|null>(null);
   const [foodFile,setFoodFile]=useState<File|null>(null);
+  const [foodPreviewUrl,setFoodPreviewUrl]=useState("");
+  const [foodPreviewExpanded,setFoodPreviewExpanded]=useState(false);
   const [foodParsing,setFoodParsing]=useState(false);
   const [foodDragging,setFoodDragging]=useState(false);
   const [foodFeedback,setFoodFeedback]=useState<""|"saving"|"success"|"error">("");
+
+  useEffect(()=>{
+    if(!foodFile){setFoodPreviewUrl("");setFoodPreviewExpanded(false);return;}
+    const url=URL.createObjectURL(foodFile);
+    setFoodPreviewUrl(url);setFoodPreviewExpanded(false);
+    return ()=>URL.revokeObjectURL(url);
+  },[foodFile]);
 
   async function load(){
     setLoading(true);setError("");
@@ -100,7 +109,7 @@ export default function AdminPage(){
   function foodField(key:keyof FoodCandidate,value:string|number){setFoodCandidate(current=>current?{...current,[key]:value}:current);}
   async function parseFoodImage(file:File|null){
     setFoodFile(file);setFoodCandidate(null);setFoodFeedback("");if(!file)return;setFoodParsing(true);setError("");
-    try{const body=new FormData();body.append("image",file);const result=await api<{candidate:FoodCandidate}>("/api/custom-foods/image-preview",{method:"POST",body});setFoodCandidate({...result.candidate,id:0,serving:result.candidate.unit,gram_weight:result.candidate.quantity});}
+    try{const body=new FormData();body.append("image",file);const result=await api<{candidate:FoodCandidate}>("/api/custom-foods/image-preview",{method:"POST",body});setFoodCandidate({...result.candidate,id:0,serving:result.candidate.serving_name ?? `${result.candidate.quantity}${result.candidate.unit}`,gramWeight:result.candidate.gram_weight ?? result.candidate.quantity});}
     catch(error){setError(error instanceof Error?error.message:"图片识别失败");}finally{setFoodParsing(false);}
   }
   async function saveSharedFood(){
@@ -110,7 +119,7 @@ export default function AdminPage(){
   }
   function editSharedFood(food:SharedFood){
     setFoodFeedback("");
-    setFoodCandidate({...food,confidence:1,quantity:food.gram_weight,unit:food.serving});
+    setFoodCandidate({...food,confidence:1,quantity:food.gram_weight,unit:(food.serving.match(/[a-zA-Z]+$/)?.[0]||"g"),gramWeight:food.gram_weight});
   }
 
   return <main className="admin-page">
@@ -142,12 +151,13 @@ export default function AdminPage(){
       </div>)}
       {adminTab==="foods"&&<section className="admin-food-maintain">
         <div className="admin-title"><div><span>SHARED FOOD LIBRARY</span><h2>食品信息维护</h2><p>图片录入和食品搜索分开管理，所有修改提交前都可以手动校对。</p></div></div>
-        <section className="admin-food-entry"><div className="admin-food-section-title"><div><span>IMAGE ENTRY</span><h3>图片录入 / 更新</h3><p>上传 Elavatine 食物详情图，识别后编辑并保存。</p></div></div>{foodFeedback==="success"&&<p className="admin-food-feedback success">✓ 保存成功，食品库已更新</p>}{foodFeedback==="error"&&<p className="admin-food-feedback error">保存失败，请检查错误提示后重试</p>}<div className="admin-food-tools"><label className={`admin-food-upload ${foodDragging?"dragging":""}`} onDragOver={event=>{event.preventDefault();setFoodDragging(true)}} onDragLeave={()=>setFoodDragging(false)} onDrop={event=>{event.preventDefault();setFoodDragging(false);const file=event.dataTransfer.files?.[0];if(file&&!file.type.startsWith("image/")){setError("请上传 JPG、PNG 或 WebP 图片");return}void parseFoodImage(file??null)}}><ImagePlus/> <span>{foodParsing?"识别中…":foodDragging?"松开以上传详情图":"拖拽图片到这里，或点击选择"}</span><small>支持 JPEG、PNG、WebP，最大 10 MB</small><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void parseFoodImage(e.target.files?.[0]??null)}/></label></div>
-          {foodCandidate&&<div className="admin-food-editor"><div className="form-pair"><label>食品名称<input value={foodCandidate.name} onChange={e=>foodField("name",e.target.value)}/></label><label>单位<input value={foodCandidate.serving} onChange={e=>foodField("serving",e.target.value)}/></label></div><div className="form-pair"><label>数量/克重<input type="number" value={foodCandidate.gram_weight} onChange={e=>foodField("gram_weight",+e.target.value)}/></label><label>热量 kcal<input type="number" value={foodCandidate.calories} onChange={e=>foodField("calories",+e.target.value)}/></label></div><div className="form-pair"><label>碳水 g<input type="number" value={foodCandidate.carbohydrate??0} onChange={e=>foodField("carbohydrate",+e.target.value)}/></label><label>蛋白质 g<input type="number" value={foodCandidate.protein??0} onChange={e=>foodField("protein",+e.target.value)}/></label></div><div className="form-pair"><label>脂肪 g<input type="number" value={foodCandidate.fat??0} onChange={e=>foodField("fat",+e.target.value)}/></label><label>膳食纤维 g<input type="number" value={foodCandidate.dietary_fiber??0} onChange={e=>foodField("dietary_fiber",+e.target.value)}/></label></div><button className="save-record" disabled={saving} onClick={()=>void saveSharedFood()}>{saving?"正在保存…":"确认更新共享食品"}</button>{foodFeedback==="saving"&&<p className="admin-food-feedback saving">正在保存食品数据…</p>}{foodFeedback==="success"&&<p className="admin-food-feedback success">✓ 保存成功，食品库已更新</p>}{foodFeedback==="error"&&<p className="admin-food-feedback error">保存失败，请检查上方错误提示后重试</p>}</div>}
+        <section className="admin-food-entry"><div className="admin-food-section-title"><div><span>IMAGE ENTRY</span><h3>图片录入 / 更新</h3><p>上传 Elavatine 食物详情图，识别后编辑并保存。</p></div></div>{foodFeedback==="success"&&<p className="admin-food-feedback success">✓ 保存成功，食品库已更新</p>}{foodFeedback==="error"&&<p className="admin-food-feedback error">保存失败，请检查错误提示后重试</p>}<div className="admin-food-tools"><label className={`admin-food-upload ${foodDragging?"dragging":""}`} onDragOver={event=>{event.preventDefault();setFoodDragging(true)}} onDragLeave={()=>setFoodDragging(false)} onDrop={event=>{event.preventDefault();setFoodDragging(false);const file=event.dataTransfer.files?.[0];if(file&&!file.type.startsWith("image/")){setError("请上传 JPG、PNG 或 WebP 图片");return}void parseFoodImage(file??null)}}><ImagePlus/> <span>{foodParsing?"识别中…":foodDragging?"松开以上传详情图":"拖拽图片到这里，或点击选择"}</span><small>支持 JPEG、PNG、WebP，最大 10 MB</small><input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>void parseFoodImage(e.target.files?.[0]??null)}/></label>{foodPreviewUrl&&<div className="admin-food-preview"><div><span>IMAGE PREVIEW</span><strong>点击放大</strong></div><img src={foodPreviewUrl} alt="已上传的食品详情图" onClick={()=>setFoodPreviewExpanded(true)}/><small>{foodFile?.name}</small></div>}</div>
+          {foodCandidate&&<div className="admin-food-editor"><div className="form-pair"><label>食品名称<input value={foodCandidate.name} onChange={e=>foodField("name",e.target.value)}/></label><label>单位<input value={foodCandidate.unit} onChange={e=>foodField("unit",e.target.value)}/></label></div><div className="form-pair"><label>数量/克重<input type="number" value={foodCandidate.gramWeight} onChange={e=>foodField("gramWeight",+e.target.value)}/></label><label>热量 kcal<input type="number" value={foodCandidate.calories} onChange={e=>foodField("calories",+e.target.value)}/></label></div><div className="form-pair"><label>碳水 g<input type="number" value={foodCandidate.carbohydrate??0} onChange={e=>foodField("carbohydrate",+e.target.value)}/></label><label>蛋白质 g<input type="number" value={foodCandidate.protein??0} onChange={e=>foodField("protein",+e.target.value)}/></label></div><div className="form-pair"><label>脂肪 g<input type="number" value={foodCandidate.fat??0} onChange={e=>foodField("fat",+e.target.value)}/></label><label>膳食纤维 g<input type="number" value={foodCandidate.dietary_fiber??0} onChange={e=>foodField("dietary_fiber",+e.target.value)}/></label></div><button className="save-record" disabled={saving} onClick={()=>void saveSharedFood()}>{saving?"正在保存…":"确认更新共享食品"}</button>{foodFeedback==="saving"&&<p className="admin-food-feedback saving">正在保存食品数据…</p>}{foodFeedback==="success"&&<p className="admin-food-feedback success">✓ 保存成功，食品库已更新</p>}{foodFeedback==="error"&&<p className="admin-food-feedback error">保存失败，请检查上方错误提示后重试</p>}</div>}
         </section>
         <section className="admin-food-search"><div className="admin-food-section-title"><div><span>FOOD SEARCH</span><h3>搜索食品</h3><p>按名称查找共享食品，支持直接手动更新营养数据。</p></div></div><div className="admin-food-tools"><div className="searchbox"><Search/><input value={foodQuery} onChange={e=>setFoodQuery(e.target.value)} placeholder="搜索食品名称"/></div></div><div className="admin-food-list"><div className="admin-food-list-head"><span>食品名称</span><span>单位</span><span>热量</span><span>碳水</span><span>蛋白质</span><span>脂肪</span><span>操作</span></div>{foods.slice(0,12).map(food=><div key={food.id}><b>{food.name}</b><span>{food.serving}</span><span>{food.calories} kcal</span><span>{food.carbohydrate} g</span><span>{food.protein} g</span><span>{food.fat} g</span><button onClick={()=>editSharedFood(food)}>编辑</button></div>)}</div></section>
       </section>}
     </section>
+    {foodPreviewExpanded&&foodPreviewUrl&&<div className="food-preview-backdrop" onMouseDown={()=>setFoodPreviewExpanded(false)}><img src={foodPreviewUrl} alt="放大查看食品详情图" onMouseDown={e=>e.stopPropagation()}/><button onClick={()=>setFoodPreviewExpanded(false)}>关闭</button></div>}
     {editor&&<div className="record-backdrop" onMouseDown={()=>setEditor(null)}><aside className="record-drawer" onMouseDown={e=>e.stopPropagation()}>
       <div className="drawer-head"><div><p>NEW ACCOUNT</p><h2>创建普通用户</h2><span>创建后首次登录必须修改临时密码</span></div><button onClick={()=>setEditor(null)}><X/></button></div>
       <label>昵称<div><UserRound/><input value={editor.displayName} onChange={e=>field("displayName",e.target.value)}/></div></label>

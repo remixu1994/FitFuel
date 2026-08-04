@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, KeyRound, Leaf, LockKeyhole, ShieldCheck } from "lucide-react";
-import { api } from "@/lib/client";
+import { api } from "@/web/client/client";
 
 export default function ChangePasswordPage() {
   const router = useRouter();

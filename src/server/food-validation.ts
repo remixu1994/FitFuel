@@ -1,4 +1,4 @@
-import { ApiError, positiveNumber } from "@/lib/http";
+import { ApiError, positiveNumber } from "@/server/http";
 
 export type ReviewedFood = {
   name: string;

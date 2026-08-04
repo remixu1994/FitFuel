@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { estimateFoodPortionWithMimo } from "@/lib/mimo";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { estimateFoodPortionWithMimo } from "@/server/mimo";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 type Context = { params: Promise<{ id: string }> };

@@ -54,7 +54,7 @@ async function ensureDatabase() {
 }
 
 async function applyMigrations(target) {
-  const migrationsUrl = new URL("../database/migrations/", import.meta.url);
+const migrationsUrl = new URL("../migrations/", import.meta.url);
   const files = (await readdir(migrationsUrl)).filter(file => file.endsWith(".sql")).sort();
   for (const file of files) {
     await target.query(await readFile(new URL(file, migrationsUrl), "utf8"));

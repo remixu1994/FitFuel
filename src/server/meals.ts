@@ -1,8 +1,8 @@
-import type { PrismaQueryClient } from "@/lib/db";
-import { ApiError } from "@/lib/http";
-import { recalculateDailyRecord } from "@/lib/nutrition";
-import { mealLabel, mealOrder, mealType } from "@/lib/meal-types";
-export { mealLabel, mealOrder, mealType } from "@/lib/meal-types";
+import type { PrismaQueryClient } from "@/server/db";
+import { ApiError } from "@/server/http";
+import { recalculateDailyRecord } from "@/server/services/nutrition";
+import { mealLabel, mealOrder, mealType } from "@/shared/domain/meal-types";
+export { mealLabel, mealOrder, mealType } from "@/shared/domain/meal-types";
 
 export type MealFood = {
   id?: number;

@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/http";
+import { ApiError } from "@/server/http";
 
 function required(name: "MIMO_BASE_URL" | "MIMO_API_KEY" | "MIMO_MODEL") {
   const value = process.env[name]?.trim();

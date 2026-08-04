@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { PrismaQueryClient, prisma } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
-import { recalculateDailyRecord } from "@/lib/nutrition";
-import { requireUser } from "@/lib/auth";
+import { PrismaQueryClient, prisma } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
+import { recalculateDailyRecord } from "@/server/services/nutrition";
+import { requireUser } from "@/server/auth";
 export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { transaction } from "@/lib/db";
-import { addFoodToMeal, type MealFood } from "@/lib/meals";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { transaction } from "@/server/db";
+import { addFoodToMeal, type MealFood } from "@/server/meals";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {

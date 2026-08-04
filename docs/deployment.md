@@ -1,68 +1,68 @@
-# 部署指南
+﻿# éƒ¨ç½²æŒ‡å—
 
-## 环境要求
+## çŽ¯å¢ƒè¦æ±‚
 
-| 依赖 | 版本 | 说明 |
+| ä¾èµ– | ç‰ˆæœ¬ | è¯´æ˜Ž |
 |------|------|------|
-| Node.js | 22+ | 推荐 22.22+ (裸机部署) |
-| Docker | 24+ | Docker 部署方式 |
-| PostgreSQL | 14+ | 需支持多 schema |
-| npm | 10+ | 随 Node.js 安装 |
+| Node.js | 22+ | æŽ¨è 22.22+ (è£¸æœºéƒ¨ç½²) |
+| Docker | 24+ | Docker éƒ¨ç½²æ–¹å¼ |
+| PostgreSQL | 14+ | éœ€æ”¯æŒå¤š schema |
+| npm | 10+ | éš Node.js å®‰è£… |
 
-## Docker 部署（推荐）
+## Docker éƒ¨ç½²ï¼ˆæŽ¨èï¼‰
 
-### CI/CD 自动构建
+### CI/CD è‡ªåŠ¨æž„å»º
 
-项目已配置 GitHub Actions（`.github/workflows/deploy.yml`），推送 main 分支时自动：
+é¡¹ç›®å·²é…ç½® GitHub Actionsï¼ˆ`.github/workflows/deploy.yml`ï¼‰ï¼ŒæŽ¨é€ main åˆ†æ”¯æ—¶è‡ªåŠ¨ï¼š
 
-1. **构建 Docker 镜像** — 基于 Node.js 22 Alpine，多阶段构建优化体积
-2. **推送到 ghcr.io** — 标签格式：`sha-xxxxx` + `latest`
-3. **自动 SSH 部署**（可选）— 需配置 GitHub Secrets
+1. **æž„å»º Docker é•œåƒ** â€” åŸºäºŽ Node.js 22 Alpineï¼Œå¤šé˜¶æ®µæž„å»ºä¼˜åŒ–ä½“ç§¯
+2. **æŽ¨é€åˆ° ghcr.io** â€” æ ‡ç­¾æ ¼å¼ï¼š`sha-xxxxx` + `latest`
+3. **è‡ªåŠ¨ SSH éƒ¨ç½²**ï¼ˆå¯é€‰ï¼‰â€” éœ€é…ç½® GitHub Secrets
 
-镜像地址：`ghcr.io/remixu1994/fitfuel`
+é•œåƒåœ°å€ï¼š`ghcr.io/remixu1994/fitfuel`
 
-### GitHub 配置
+### GitHub é…ç½®
 
-在仓库 **Settings → Secrets and variables → Actions** 中配置：
+åœ¨ä»“åº“ **Settings â†’ Secrets and variables â†’ Actions** ä¸­é…ç½®ï¼š
 
-#### 自动部署所需 Secrets（可选）
+#### è‡ªåŠ¨éƒ¨ç½²æ‰€éœ€ Secretsï¼ˆå¯é€‰ï¼‰
 
-| Secret | 说明 |
+| Secret | è¯´æ˜Ž |
 |--------|------|
-| `DEPLOY_HOST` | 服务器 IP 或域名 |
-| `DEPLOY_USER` | SSH 登录用户 |
-| `DEPLOY_SSH_KEY` | SSH 私钥 |
-| `DEPLOY_PORT` | SSH 端口（默认 22） |
+| `DEPLOY_HOST` | æœåŠ¡å™¨ IP æˆ–åŸŸå |
+| `DEPLOY_USER` | SSH ç™»å½•ç”¨æˆ· |
+| `DEPLOY_SSH_KEY` | SSH ç§é’¥ |
+| `DEPLOY_PORT` | SSH ç«¯å£ï¼ˆé»˜è®¤ 22ï¼‰ |
 
-#### 自动部署所需 Variables
+#### è‡ªåŠ¨éƒ¨ç½²æ‰€éœ€ Variables
 
-| Variable | 说明 |
+| Variable | è¯´æ˜Ž |
 |----------|------|
-| `DEPLOY_ENABLED` | 设为 `true` 开启自动 SSH 部署 |
-| `DEPLOY_PATH` | 服务器上的项目路径（默认 `/opt/fitfuel`） |
+| `DEPLOY_ENABLED` | è®¾ä¸º `true` å¼€å¯è‡ªåŠ¨ SSH éƒ¨ç½² |
+| `DEPLOY_PATH` | æœåŠ¡å™¨ä¸Šçš„é¡¹ç›®è·¯å¾„ï¼ˆé»˜è®¤ `/opt/fitfuel`ï¼‰ |
 
-> 如果不配置自动部署，每次 push 仅构建镜像，需手动 pull 到服务器。
+> å¦‚æžœä¸é…ç½®è‡ªåŠ¨éƒ¨ç½²ï¼Œæ¯æ¬¡ push ä»…æž„å»ºé•œåƒï¼Œéœ€æ‰‹åŠ¨ pull åˆ°æœåŠ¡å™¨ã€‚
 
-### 服务器首次部署
+### æœåŠ¡å™¨é¦–æ¬¡éƒ¨ç½²
 
 ```bash
-# 1. 拉取项目
+# 1. æ‹‰å–é¡¹ç›®
 git clone git@github.com:remixu1994/FitFuel.git /opt/fitfuel
 cd /opt/fitfuel
 
-# 2. 创建 .env 并填入生产环境配置
+# 2. åˆ›å»º .env å¹¶å¡«å…¥ç”Ÿäº§çŽ¯å¢ƒé…ç½®
 cp .env.example .env
-# 编辑 .env —— 填入数据库地址、MiMo API Key 等
+# ç¼–è¾‘ .env â€”â€” å¡«å…¥æ•°æ®åº“åœ°å€ã€MiMo API Key ç­‰
 
-# 3. 登录 ghcr.io（需 GitHub Personal Access Token，权限 read:packages）
+# 3. ç™»å½• ghcr.ioï¼ˆéœ€ GitHub Personal Access Tokenï¼Œæƒé™ read:packagesï¼‰
 echo "YOUR_GITHUB_TOKEN" | docker login ghcr.io -u remixu1994 --password-stdin
 
-# 4. 拉取并启动
+# 4. æ‹‰å–å¹¶å¯åŠ¨
 docker compose pull app
 docker compose up -d app
 ```
 
-### 后续更新
+### åŽç»­æ›´æ–°
 
 ```bash
 cd /opt/fitfuel
@@ -71,274 +71,282 @@ docker compose up -d --remove-orphans app
 docker image prune -f
 ```
 
-或直接运行部署脚本：
+æˆ–ç›´æŽ¥è¿è¡Œéƒ¨ç½²è„šæœ¬ï¼š
 
 ```bash
-bash scripts/deploy.sh
+bash tools/scripts/deploy.sh
 ```
 
-### Docker 架构说明
+### Docker æž¶æž„è¯´æ˜Ž
 
 ```
-Dockerfile (多阶段构建)
-├── Stage 1: deps       — 安装生产依赖
-├── Stage 2: builder    — prisma generate + next build (standalone 模式)
-└── Stage 3: runner     — 仅 copy 必需文件，非 root 用户运行
+Dockerfile (å¤šé˜¶æ®µæž„å»º)
+â”œâ”€â”€ Stage 1: deps       â€” å®‰è£…ç”Ÿäº§ä¾èµ–
+â”œâ”€â”€ Stage 2: builder    â€” prisma generate + next build (standalone æ¨¡å¼)
+â””â”€â”€ Stage 3: runner     â€” ä»… copy å¿…éœ€æ–‡ä»¶ï¼Œéž root ç”¨æˆ·è¿è¡Œ
 ```
 
 - **Base image**: `node:22-alpine`
-- **Next.js 模式**: `output: "standalone"`（自包含 server.js）
-- **运行用户**: `nextjs` (uid 1001)，非 root
-- **暴露端口**: `3000`
+- **Next.js æ¨¡å¼**: `output: "standalone"`ï¼ˆè‡ªåŒ…å« server.jsï¼‰
+- **è¿è¡Œç”¨æˆ·**: `nextjs` (uid 1001)ï¼Œéž root
+- **æš´éœ²ç«¯å£**: `3000`
 
-### 私有上传目录（Elavatine 图片）
+### ç§æœ‰ä¸Šä¼ ç›®å½•ï¼ˆElavatine å›¾ç‰‡ï¼‰
 
-Elavatine 上传图片的根目录由 `PRIVATE_UPLOAD_DIR` 控制。Docker 部署中，
-**docker-compose.yml 将宿主机目录直接挂载到容器**，并让应用指向该挂载点：
+Elavatine ä¸Šä¼ å›¾ç‰‡çš„æ ¹ç›®å½•ç”± `PRIVATE_UPLOAD_DIR` æŽ§åˆ¶ã€‚Docker éƒ¨ç½²ä¸­ï¼Œ
+**docker-compose.yml å°†å®¿ä¸»æœºç›®å½•ç›´æŽ¥æŒ‚è½½åˆ°å®¹å™¨**ï¼Œå¹¶è®©åº”ç”¨æŒ‡å‘è¯¥æŒ‚è½½ç‚¹ï¼š
 
 ```yaml
 environment:
   - PRIVATE_UPLOAD_DIR=/app/uploads
 volumes:
-  - ./uploads:/app/uploads   # 宿主机指定目录 → 容器上传目录
+  - ./uploads:/app/uploads   # å®¿ä¸»æœºæŒ‡å®šç›®å½• â†’ å®¹å™¨ä¸Šä¼ ç›®å½•
 ```
 
-- **默认宿主机路径**：compose 文件旁的 `./uploads`（即 `/opt/fitfuel/uploads`）。
-  想用别的目录，改 compose 里的挂载路径即可（例如 `/data/fitfuel/uploads:/app/uploads`）。
-- **权限要求**：容器内以非 root 用户 `nextjs`（uid 1001）运行，
-  **宿主机挂载目录必须对该 uid 可写**。`scripts/deploy.sh` 会自动 `mkdir -p` 并
-  `chown 1001:1001`；手动部署时执行一次：
+- **é»˜è®¤å®¿ä¸»æœºè·¯å¾„**ï¼šcompose æ–‡ä»¶æ—çš„ `./uploads`ï¼ˆå³ `/opt/fitfuel/uploads`ï¼‰ã€‚
+  æƒ³ç”¨åˆ«çš„ç›®å½•ï¼Œæ”¹ compose é‡Œçš„æŒ‚è½½è·¯å¾„å³å¯ï¼ˆä¾‹å¦‚ `/data/fitfuel/uploads:/app/uploads`ï¼‰ã€‚
+- **æƒé™è¦æ±‚**ï¼šå®¹å™¨å†…ä»¥éž root ç”¨æˆ· `nextjs`ï¼ˆuid 1001ï¼‰è¿è¡Œï¼Œ
+**å®¿ä¸»æœºæŒ‚è½½ç›®å½•å¿…é¡»å¯¹è¯¥ uid å¯å†™**ã€‚`tools/scripts/deploy.sh` ä¼šè‡ªåŠ¨ `mkdir -p` å¹¶
+  `chown 1001:1001`ï¼›æ‰‹åŠ¨éƒ¨ç½²æ—¶æ‰§è¡Œä¸€æ¬¡ï¼š
 
 ```bash
 mkdir -p /opt/fitfuel/uploads
 sudo chown -R 1001:1001 /opt/fitfuel/uploads
 ```
 
-- 镜像已预创建 `/app/uploads` 和 `/app/.private` 并授权给 `nextjs`，
-  因此即便使用命名卷（而非宿主目录挂载）也能获得正确属主。
-- 裸机部署（非 Docker）时保持默认 `PRIVATE_UPLOAD_DIR=.private/elevatine-imports` 即可。
+- é•œåƒå·²é¢„åˆ›å»º `/app/uploads` å’Œ `/app/.private` å¹¶æŽˆæƒç»™ `nextjs`ï¼Œ
+  å› æ­¤å³ä¾¿ä½¿ç”¨å‘½åå·ï¼ˆè€Œéžå®¿ä¸»ç›®å½•æŒ‚è½½ï¼‰ä¹Ÿèƒ½èŽ·å¾—æ­£ç¡®å±žä¸»ã€‚
+- è£¸æœºéƒ¨ç½²ï¼ˆéž Dockerï¼‰æ—¶ä¿æŒé»˜è®¤ `PRIVATE_UPLOAD_DIR=.private/elevatine-imports` å³å¯ã€‚
 
-> **升级自旧版本**：旧 compose 使用命名卷 `fitfuel_private`。升级后该卷不再使用，
-> 如需清理：`docker volume rm fitfuel_private`（如有历史图片请先迁移到新挂载目录）。
+> **å‡çº§è‡ªæ—§ç‰ˆæœ¬**ï¼šæ—§ compose ä½¿ç”¨å‘½åå· `fitfuel_private`ã€‚å‡çº§åŽè¯¥å·ä¸å†ä½¿ç”¨ï¼Œ
+> å¦‚éœ€æ¸…ç†ï¼š`docker volume rm fitfuel_private`ï¼ˆå¦‚æœ‰åŽ†å²å›¾ç‰‡è¯·å…ˆè¿ç§»åˆ°æ–°æŒ‚è½½ç›®å½•ï¼‰ã€‚
 
-## 环境变量
+## çŽ¯å¢ƒå˜é‡
 
-### 必需
+### å¿…éœ€
 
-| 变量 | 说明 | 示例 |
+| å˜é‡ | è¯´æ˜Ž | ç¤ºä¾‹ |
 |------|------|------|
-| `DATABASE_URL` | PostgreSQL 连接字符串 | `postgresql://user:pass@host:port/fitfuel?sslmode=disable` |
+| `DATABASE_URL` | PostgreSQL è¿žæŽ¥å­—ç¬¦ä¸² | `postgresql://user:pass@host:port/fitfuel?sslmode=disable` |
 
-或使用分散配置（二选一）：
+æˆ–ä½¿ç”¨åˆ†æ•£é…ç½®ï¼ˆäºŒé€‰ä¸€ï¼‰ï¼š
 
-| 变量 | 说明 |
+| å˜é‡ | è¯´æ˜Ž |
 |------|------|
-| `PGHOST` | 数据库主机 |
-| `PGPORT` | 数据库端口 |
-| `PGUSER` | 数据库用户 |
-| `PGPASSWORD` | 数据库密码 |
-| `PGDATABASE` | 数据库名（默认 fitfuel） |
-| `PGSSL` | 是否启用 SSL（"true"/"false"） |
+| `PGHOST` | æ•°æ®åº“ä¸»æœº |
+| `PGPORT` | æ•°æ®åº“ç«¯å£ |
+| `PGUSER` | æ•°æ®åº“ç”¨æˆ· |
+| `PGPASSWORD` | æ•°æ®åº“å¯†ç  |
+| `PGDATABASE` | æ•°æ®åº“åï¼ˆé»˜è®¤ fitfuelï¼‰ |
+| `PGSSL` | æ˜¯å¦å¯ç”¨ SSLï¼ˆ"true"/"false"ï¼‰ |
 
-### AI 服务（必需）
+### AI æœåŠ¡ï¼ˆå¿…éœ€ï¼‰
 
-| 变量 | 说明 |
+| å˜é‡ | è¯´æ˜Ž |
 |------|------|
-| `MIMO_BASE_URL` | MiMo API 基础 URL |
-| `MIMO_API_KEY` | MiMo API 密钥 |
-| `MIMO_MODEL` | 文本模型名称（如 mimo-v2.5） |
-| `MIMO_VISION_MODEL` | 视觉模型名称（可选，回退到 MIMO_MODEL） |
-| `AI_CANDIDATE_SECRET` | AI 候选 HMAC 签名密钥（≥32 字符） |
+| `MIMO_BASE_URL` | MiMo API åŸºç¡€ URL |
+| `MIMO_API_KEY` | MiMo API å¯†é’¥ |
+| `MIMO_MODEL` | æ–‡æœ¬æ¨¡åž‹åç§°ï¼ˆå¦‚ mimo-v2.5ï¼‰ |
+| `MIMO_VISION_MODEL` | è§†è§‰æ¨¡åž‹åç§°ï¼ˆå¯é€‰ï¼Œå›žé€€åˆ° MIMO_MODELï¼‰ |
+| `AI_CANDIDATE_SECRET` | AI å€™é€‰ HMAC ç­¾åå¯†é’¥ï¼ˆâ‰¥32 å­—ç¬¦ï¼‰ |
 
-### COROS 运动同步（可选）
+### COROS è¿åŠ¨åŒæ­¥ï¼ˆå¯é€‰ï¼‰
 
-| 变量 | 说明 |
+| å˜é‡ | è¯´æ˜Ž |
 |------|------|
-| `COROS_ACCOUNT` | COROS 账号 |
-| `COROS_PASSWORD` | COROS 密码 |
-| `COROS_API_BASE_URL` | COROS API 地址（默认 https://teamcnapi.coros.com） |
-| `COROS_TEAM_API_BASE_URL` | COROS Team API 地址 |
+| `COROS_ACCOUNT` | COROS è´¦å· |
+| `COROS_PASSWORD` | COROS å¯†ç  |
+| `COROS_API_BASE_URL` | COROS API åœ°å€ï¼ˆé»˜è®¤ https://teamcnapi.coros.comï¼‰ |
+| `COROS_TEAM_API_BASE_URL` | COROS Team API åœ°å€ |
 
-### 其他（可选）
+### å…¶ä»–ï¼ˆå¯é€‰ï¼‰
 
-| 变量 | 说明 | 默认值 |
+| å˜é‡ | è¯´æ˜Ž | é»˜è®¤å€¼ |
 |------|------|--------|
-| `PRIVATE_UPLOAD_DIR` | 图片上传根目录 | `.private/elevatine-imports` |
-| `COOKIE_SECURE` | Cookie 安全标志 | 生产环境 true，开发环境 false |
+| `PRIVATE_UPLOAD_DIR` | å›¾ç‰‡ä¸Šä¼ æ ¹ç›®å½• | `.private/elevatine-imports` |
+| `COOKIE_SECURE` | Cookie å®‰å…¨æ ‡å¿— | ç”Ÿäº§çŽ¯å¢ƒ trueï¼Œå¼€å‘çŽ¯å¢ƒ false |
 
-## 数据库初始化
+## æ•°æ®åº“åˆå§‹åŒ–
 
-### 全新部署
+### å…¨æ–°éƒ¨ç½²
 
 ```bash
-# 1. 创建数据库
+# 1. åˆ›å»ºæ•°æ®åº“
 npm run db:init
 
-# 2. 验证结构
+# 2. éªŒè¯ç»“æž„
 npm run db:verify
 
-# 3. 检查连接
+# 3. æ£€æŸ¥è¿žæŽ¥
 npm run db:inspect
 ```
 
-### 从旧库迁移
+### ä»Žæ—§åº“è¿ç§»
 
 ```bash
-# 从 food_db 迁移到独立 fitfuel 数据库
+# ä»Ž food_db è¿ç§»åˆ°ç‹¬ç«‹ fitfuel æ•°æ®åº“
 npm run db:migrate:fitfuel
 
-# 验证目标库
+# éªŒè¯ç›®æ ‡åº“
 npm run db:verify:fitfuel
 ```
 
-### Prisma 客户端
+### Prisma å®¢æˆ·ç«¯
 
 ```bash
-npm run prisma:generate    # 生成 Prisma Client
-npm run prisma:pull        # 从数据库反向生成 schema（慎用）
+npm run prisma:generate    # ç”Ÿæˆ Prisma Client
+npm run prisma:pull        # ä»Žæ•°æ®åº“åå‘ç”Ÿæˆ schemaï¼ˆæ…Žç”¨ï¼‰
 ```
 
-> **注意**：`postinstall` 和 `prebuild` 脚本会自动执行 `prisma generate`，无需手动运行。
+> **æ³¨æ„**ï¼š`postinstall` å’Œ `prebuild` è„šæœ¬ä¼šè‡ªåŠ¨æ‰§è¡Œ `prisma generate`ï¼Œæ— éœ€æ‰‹åŠ¨è¿è¡Œã€‚
 
-## 本地开发
+## æœ¬åœ°å¼€å‘
 
 ```bash
-# 安装依赖
+# å®‰è£…ä¾èµ–
 npm install
 
-# 启动开发服务器（http://localhost:3000）
+# å¯åŠ¨å¼€å‘æœåŠ¡å™¨ï¼ˆhttp://localhost:3000ï¼‰
 npm run dev
 ```
 
-开发服务器支持热重载。Prisma Client 在开发环境下使用全局单例，防止热重载导致连接泄漏。
+å¼€å‘æœåŠ¡å™¨æ”¯æŒçƒ­é‡è½½ã€‚Prisma Client åœ¨å¼€å‘çŽ¯å¢ƒä¸‹ä½¿ç”¨å…¨å±€å•ä¾‹ï¼Œé˜²æ­¢çƒ­é‡è½½å¯¼è‡´è¿žæŽ¥æ³„æ¼ã€‚
 
-## 生产构建
+## ç”Ÿäº§æž„å»º
 
 ```bash
-# 构建前确保停止占用 3000 端口的服务（避免 Prisma 引擎文件锁）
-# 然后构建
+# æž„å»ºå‰ç¡®ä¿åœæ­¢å ç”¨ 3000 ç«¯å£çš„æœåŠ¡ï¼ˆé¿å… Prisma å¼•æ“Žæ–‡ä»¶é”ï¼‰
+# ç„¶åŽæž„å»º
 npm run build
 
-# 启动生产服务器
+# å¯åŠ¨ç”Ÿäº§æœåŠ¡å™¨
 npm run start
 ```
 
-构建流程：
-1. `prebuild` → `prisma generate`
-2. `next build` → TypeScript 类型检查 + 编译
-3. 输出至 `.next/` 目录
+æž„å»ºæµç¨‹ï¼š
+1. `prebuild` â†’ `prisma generate`
+2. `next build` â†’ TypeScript ç±»åž‹æ£€æŸ¥ + ç¼–è¯‘
+3. è¾“å‡ºè‡³ `.next/` ç›®å½•
 
-### 常见构建问题
+### å¸¸è§æž„å»ºé—®é¢˜
 
-| 问题 | 原因 | 解决 |
+| é—®é¢˜ | åŽŸå›  | è§£å†³ |
 |------|------|------|
-| Prisma 引擎文件锁 | 3000 端口有运行中的 Next 服务 | 先停止服务再构建 |
-| `rowCount` 可空错误 | Prisma Raw 返回类型与 pg 不同 | 显式归零处理 |
-| JSON 参数绑定错误 | Prisma 将 JSON 字符串绑定为 text | SQL 中显式 `::jsonb` 转换 |
-| advisory lock 返回 void | Prisma 无法反序列化 void | 显式转换为 `::text` |
-| 日期参数不隐式转换 | Prisma 不自动将字符串转 date | SQL 中显式 `::date` |
+| Prisma å¼•æ“Žæ–‡ä»¶é” | 3000 ç«¯å£æœ‰è¿è¡Œä¸­çš„ Next æœåŠ¡ | å…ˆåœæ­¢æœåŠ¡å†æž„å»º |
+| `rowCount` å¯ç©ºé”™è¯¯ | Prisma Raw è¿”å›žç±»åž‹ä¸Ž pg ä¸åŒ | æ˜¾å¼å½’é›¶å¤„ç† |
+| JSON å‚æ•°ç»‘å®šé”™è¯¯ | Prisma å°† JSON å­—ç¬¦ä¸²ç»‘å®šä¸º text | SQL ä¸­æ˜¾å¼ `::jsonb` è½¬æ¢ |
+| advisory lock è¿”å›ž void | Prisma æ— æ³•ååºåˆ—åŒ– void | æ˜¾å¼è½¬æ¢ä¸º `::text` |
+| æ—¥æœŸå‚æ•°ä¸éšå¼è½¬æ¢ | Prisma ä¸è‡ªåŠ¨å°†å­—ç¬¦ä¸²è½¬ date | SQL ä¸­æ˜¾å¼ `::date` |
 
-## 测试
+## æµ‹è¯•
 
-### 端到端冒烟测试
+### ç«¯åˆ°ç«¯å†’çƒŸæµ‹è¯•
 
 ```bash
-# 运行完整冒烟测试
+# è¿è¡Œå®Œæ•´å†’çƒŸæµ‹è¯•
 npm run test:smoke
 
-# 清理测试数据
+# æ¸…ç†æµ‹è¯•æ•°æ®
 npm run test:smoke:cleanup
 ```
 
-冒烟测试覆盖：
-- 认证与权限（登录、改密、管理员、用户隔离）
-- 食品搜索（空搜索、关键词搜索、精确匹配）
-- 每日记录读写
-- 餐食事务
-- AI 共享入库（真实 MiMo 调用）
-- Excel/CSV 导入导出
-- Elavatine 图片同步
-- 撤销恢复
+å†’çƒŸæµ‹è¯•è¦†ç›–ï¼š
+- è®¤è¯ä¸Žæƒé™ï¼ˆç™»å½•ã€æ”¹å¯†ã€ç®¡ç†å‘˜ã€ç”¨æˆ·éš”ç¦»ï¼‰
+- é£Ÿå“æœç´¢ï¼ˆç©ºæœç´¢ã€å…³é”®è¯æœç´¢ã€ç²¾ç¡®åŒ¹é…ï¼‰
+- æ¯æ—¥è®°å½•è¯»å†™
+- é¤é£Ÿäº‹åŠ¡
+- AI å…±äº«å…¥åº“ï¼ˆçœŸå®ž MiMo è°ƒç”¨ï¼‰
+- Excel/CSV å¯¼å…¥å¯¼å‡º
+- Elavatine å›¾ç‰‡åŒæ­¥
+- æ’¤é”€æ¢å¤
 
-### Elavatine 视觉测试
-
-```bash
-node --env-file=.env.local scripts/elevatine-vision-smoke.mjs
-```
-
-### COROS 同步测试
+### Elavatine è§†è§‰æµ‹è¯•
 
 ```bash
-npm run coros:login:test    # 测试登录
-npm run coros:sync          # 执行同步
-npm run coros:sync:verify   # 验证同步结果
+node --env-file=.env.local tools/scripts/elevatine-vision-smoke.mjs
 ```
 
-## 脚本工具
+æœ¬åœ°è„šæœ¬é€šè¿‡æ ‡å‡†è¾“å‡ºè¿”å›žç»“æžœï¼›éœ€è¦ä¿å­˜æ—¥å¿—æ—¶ç»Ÿä¸€å†™å…¥ `.runtime/logs/`ï¼Œä¾‹å¦‚ï¼š
 
-| 命令 | 说明 |
+```bash
+mkdir -p .runtime/logs
+npm run coros:sync > .runtime/logs/coros-sync.log 2>&1
+```
+
+### COROS åŒæ­¥æµ‹è¯•
+
+```bash
+npm run coros:login:test    # æµ‹è¯•ç™»å½•
+npm run coros:sync          # æ‰§è¡ŒåŒæ­¥
+npm run coros:sync:verify   # éªŒè¯åŒæ­¥ç»“æžœ
+```
+
+## è„šæœ¬å·¥å…·
+
+| å‘½ä»¤ | è¯´æ˜Ž |
 |------|------|
-| `npm run db:init` | 创建数据库并执行迁移 |
-| `npm run db:inspect` | 检查数据库连接和表状态 |
-| `npm run db:verify` | 验证数据库结构完整性 |
-| `npm run db:migrate:fitfuel` | 从旧库迁移到独立 fitfuel 数据库 |
-| `npm run db:verify:fitfuel` | 验证目标迁移库 |
-| `npm run prisma:generate` | 生成 Prisma Client |
-| `npm run prisma:pull` | 反向生成 Prisma Schema |
-| `npm run data:enrich:elevatine` | 批量补全 Elavatine 食品营养 |
-| `npm run coros:login:test` | 测试 COROS 登录 |
-| `npm run coros:sync` | 执行 COROS 活动同步 |
-| `npm run coros:sync:verify` | 验证 COROS 同步结果 |
-| `npm run test:smoke` | 端到端冒烟测试 |
-| `npm run test:smoke:cleanup` | 清理冒烟测试数据 |
+| `npm run db:init` | åˆ›å»ºæ•°æ®åº“å¹¶æ‰§è¡Œè¿ç§» |
+| `npm run db:inspect` | æ£€æŸ¥æ•°æ®åº“è¿žæŽ¥å’Œè¡¨çŠ¶æ€ |
+| `npm run db:verify` | éªŒè¯æ•°æ®åº“ç»“æž„å®Œæ•´æ€§ |
+| `npm run db:migrate:fitfuel` | ä»Žæ—§åº“è¿ç§»åˆ°ç‹¬ç«‹ fitfuel æ•°æ®åº“ |
+| `npm run db:verify:fitfuel` | éªŒè¯ç›®æ ‡è¿ç§»åº“ |
+| `npm run prisma:generate` | ç”Ÿæˆ Prisma Client |
+| `npm run prisma:pull` | åå‘ç”Ÿæˆ Prisma Schema |
+| `npm run data:enrich:elevatine` | æ‰¹é‡è¡¥å…¨ Elavatine é£Ÿå“è¥å…» |
+| `npm run coros:login:test` | æµ‹è¯• COROS ç™»å½• |
+| `npm run coros:sync` | æ‰§è¡Œ COROS æ´»åŠ¨åŒæ­¥ |
+| `npm run coros:sync:verify` | éªŒè¯ COROS åŒæ­¥ç»“æžœ |
+| `npm run test:smoke` | ç«¯åˆ°ç«¯å†’çƒŸæµ‹è¯• |
+| `npm run test:smoke:cleanup` | æ¸…ç†å†’çƒŸæµ‹è¯•æ•°æ® |
 
-## 项目脚本文件
+## é¡¹ç›®è„šæœ¬æ–‡ä»¶
 
 ```
 scripts/
-├── inspect-db.mjs              # 数据库检查
-├── init-db.mjs                 # 数据库初始化
-├── migrate-to-fitfuel.mjs      # 旧库迁移
-├── verify-db.mjs               # 数据库验证
-├── verify-target-db.mjs        # 目标库验证
-├── prisma-client.mjs           # Prisma Client 工具
-├── smoke-test.mjs              # 冒烟测试
-├── cleanup-smoke-data.mjs      # 测试数据清理
-├── verify-latest-import.mjs    # 导入验证
-├── elevatine-vision-smoke.mjs  # Elavatine 视觉测试
-├── import-elevatine-folder.ts  # 批量导入 Elavatine 截图
-├── verify-elevatine-import.ts  # Elavatine 导入验证
-├── enrich-elevatine-foods.ts   # Elavatine 食品营养补全
-├── test-coros-login.ts         # COROS 登录测试
-├── sync-coros-activities.ts    # COROS 活动同步
-└── verify-coros-sync.ts        # COROS 同步验证
+â”œâ”€â”€ inspect-db.mjs              # æ•°æ®åº“æ£€æŸ¥
+â”œâ”€â”€ init-db.mjs                 # æ•°æ®åº“åˆå§‹åŒ–
+â”œâ”€â”€ migrate-to-fitfuel.mjs      # æ—§åº“è¿ç§»
+â”œâ”€â”€ verify-db.mjs               # æ•°æ®åº“éªŒè¯
+â”œâ”€â”€ verify-target-db.mjs        # ç›®æ ‡åº“éªŒè¯
+â”œâ”€â”€ prisma-client.mjs           # Prisma Client å·¥å…·
+â”œâ”€â”€ smoke-test.mjs              # å†’çƒŸæµ‹è¯•
+â”œâ”€â”€ cleanup-smoke-data.mjs      # æµ‹è¯•æ•°æ®æ¸…ç†
+â”œâ”€â”€ verify-latest-import.mjs    # å¯¼å…¥éªŒè¯
+â”œâ”€â”€ elevatine-vision-smoke.mjs  # Elavatine è§†è§‰æµ‹è¯•
+â”œâ”€â”€ import-elevatine-folder.ts  # æ‰¹é‡å¯¼å…¥ Elavatine æˆªå›¾
+â”œâ”€â”€ verify-elevatine-import.ts  # Elavatine å¯¼å…¥éªŒè¯
+â”œâ”€â”€ enrich-elevatine-foods.ts   # Elavatine é£Ÿå“è¥å…»è¡¥å…¨
+â”œâ”€â”€ test-coros-login.ts         # COROS ç™»å½•æµ‹è¯•
+â”œâ”€â”€ sync-coros-activities.ts    # COROS æ´»åŠ¨åŒæ­¥
+â””â”€â”€ verify-coros-sync.ts        # COROS åŒæ­¥éªŒè¯
 ```
 
-## 安全注意事项
+## å®‰å…¨æ³¨æ„äº‹é¡¹
 
-1. **`.env.local` 必须被 Git 忽略** — 数据库密码和 AI 密钥不得提交
-2. **`AI_CANDIDATE_SECRET` 至少 32 字符** — 用于 HMAC 签名，防止 AI 候选篡改
-3. **管理员账号管理** — 公开注册已关闭，仅管理员可创建用户
-4. **图片存储为私有目录** — `PRIVATE_UPLOAD_DIR` 不在公共访问路径下
-5. **COROS 凭据安全** — 使用 bcrypt(md5(password)) 格式提交，不存储明文
-6. **会话 token 仅存哈希** — 即使数据库泄露也无法直接使用 token
+1. **`.env.local` å¿…é¡»è¢« Git å¿½ç•¥** â€” æ•°æ®åº“å¯†ç å’Œ AI å¯†é’¥ä¸å¾—æäº¤
+2. **`AI_CANDIDATE_SECRET` è‡³å°‘ 32 å­—ç¬¦** â€” ç”¨äºŽ HMAC ç­¾åï¼Œé˜²æ­¢ AI å€™é€‰ç¯¡æ”¹
+3. **ç®¡ç†å‘˜è´¦å·ç®¡ç†** â€” å…¬å¼€æ³¨å†Œå·²å…³é—­ï¼Œä»…ç®¡ç†å‘˜å¯åˆ›å»ºç”¨æˆ·
+4. **å›¾ç‰‡å­˜å‚¨ä¸ºç§æœ‰ç›®å½•** â€” `PRIVATE_UPLOAD_DIR` ä¸åœ¨å…¬å…±è®¿é—®è·¯å¾„ä¸‹
+5. **COROS å‡­æ®å®‰å…¨** â€” ä½¿ç”¨ bcrypt(md5(password)) æ ¼å¼æäº¤ï¼Œä¸å­˜å‚¨æ˜Žæ–‡
+6. **ä¼šè¯ token ä»…å­˜å“ˆå¸Œ** â€” å³ä½¿æ•°æ®åº“æ³„éœ²ä¹Ÿæ— æ³•ç›´æŽ¥ä½¿ç”¨ token
 
-## 运维
+## è¿ç»´
 
-### 图片清理
+### å›¾ç‰‡æ¸…ç†
 
-Elavatine 图片在批次提交后自动删除。未提交的批次图片在 24 小时后过期，可通过 `cleanupExpiredElevatineImages()` 清理。
+Elavatine å›¾ç‰‡åœ¨æ‰¹æ¬¡æäº¤åŽè‡ªåŠ¨åˆ é™¤ã€‚æœªæäº¤çš„æ‰¹æ¬¡å›¾ç‰‡åœ¨ 24 å°æ—¶åŽè¿‡æœŸï¼Œå¯é€šè¿‡ `cleanupExpiredElevatineImages()` æ¸…ç†ã€‚
 
-### 数据库维护
+### æ•°æ®åº“ç»´æŠ¤
 
 ```bash
-# 定期执行（建议每周）
-npm run db:verify    # 验证结构完整性
-npm run db:inspect   # 检查表状态
+# å®šæœŸæ‰§è¡Œï¼ˆå»ºè®®æ¯å‘¨ï¼‰
+npm run db:verify    # éªŒè¯ç»“æž„å®Œæ•´æ€§
+npm run db:inspect   # æ£€æŸ¥è¡¨çŠ¶æ€
 ```
 
-### 日志
+### æ—¥å¿—
 
-- MiMo AI 请求失败：`console.error("Mimo request failed", error)`
-- Elavatine 营养估算失败：`console.error("Elavatine nutrition estimate failed", ...)`
-- 未处理错误：`console.error(error)` in `jsonError()`
+- MiMo AI è¯·æ±‚å¤±è´¥ï¼š`console.error("Mimo request failed", error)`
+- Elavatine è¥å…»ä¼°ç®—å¤±è´¥ï¼š`console.error("Elavatine nutrition estimate failed", ...)`
+- æœªå¤„ç†é”™è¯¯ï¼š`console.error(error)` in `jsonError()`
+

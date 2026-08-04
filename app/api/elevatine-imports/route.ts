@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
-import { requireUser } from "@/lib/auth";
-import { ApiError, assertSameOrigin, jsonError } from "@/lib/http";
+import { prisma } from "@/server/db";
+import { requireUser } from "@/server/auth";
+import { ApiError, assertSameOrigin, jsonError } from "@/server/http";
 import {
   MAX_BATCH_BYTES,
   MAX_IMAGE_COUNT,
   storeElevatineImage
-} from "@/lib/elevatine-storage";
-import { cleanupExpiredElevatineImages } from "@/lib/elevatine-import";
+} from "@/server/elevatine-storage";
+import { cleanupExpiredElevatineImages } from "@/server/elevatine-import";
 export const dynamic = "force-dynamic";
 
 export async function GET() {

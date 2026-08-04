@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
+import { requireAdmin } from "@/server/auth";
+import { db } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {

@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { ApiError, jsonError } from "@/lib/http";
-import { calculateMetabolism } from "@/lib/nutrition";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { ApiError, jsonError } from "@/server/http";
+import { calculateMetabolism } from "@/shared/domain/nutrition";
 export const dynamic = "force-dynamic";
 
 const ranges = {

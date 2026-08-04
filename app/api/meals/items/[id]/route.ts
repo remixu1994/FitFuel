@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { transaction } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
-import { recalculateDailyRecord } from "@/lib/nutrition";
+import { requireUser } from "@/server/auth";
+import { transaction } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
+import { recalculateDailyRecord } from "@/server/services/nutrition";
 export const dynamic = "force-dynamic";
 
-async function ownedItem(client: import("@/lib/db").PrismaQueryClient, id: number, userId: number, includeDeleted=false) {
+async function ownedItem(client: import("@/server/db").PrismaQueryClient, id: number, userId: number, includeDeleted=false) {
   const result = await client.query(
     `select mi.*,m.daily_record_id from fitfuel.meal_item mi
      join fitfuel.meal m on m.id=mi.meal_id

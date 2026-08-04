@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
-import { prisma } from "@/lib/db";
-import { ApiError } from "@/lib/http";
-import { SESSION_COOKIE } from "@/lib/constants";
+import { prisma } from "@/server/db";
+import { ApiError } from "@/server/http";
+import { SESSION_COOKIE } from "@/server/constants";
 
 const SESSION_DAYS = 30;
 

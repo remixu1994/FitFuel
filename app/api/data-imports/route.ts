@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { jsonError } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { jsonError } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export async function GET() {

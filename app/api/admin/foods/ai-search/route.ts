@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { createCandidateToken, normalizeFoodQuery } from "@/lib/ai-candidate";
-import { requireAdmin } from "@/lib/auth";
-import { db, numbers } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
-import { searchFoodWithMimo } from "@/lib/mimo";
+import { createCandidateToken, normalizeFoodQuery } from "@/server/ai-candidate";
+import { requireAdmin } from "@/server/auth";
+import { db, numbers } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
+import { searchFoodWithMimo } from "@/server/mimo";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {

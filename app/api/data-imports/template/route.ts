@@ -1,6 +1,6 @@
-import { requireUser } from "@/lib/auth";
-import { buildDailyDataTemplate } from "@/lib/daily-data-file";
-import { ApiError, jsonError } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { buildDailyDataTemplate } from "@/server/daily-data-file";
+import { ApiError, jsonError } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";

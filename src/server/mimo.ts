@@ -1,5 +1,5 @@
-import { ApiError } from "@/lib/http";
-import { getMimoConfig } from "@/lib/ai-config";
+import { ApiError } from "@/server/http";
+import { getMimoConfig } from "@/server/ai-config";
 
 export type AiFoodResult = {
   key: string;

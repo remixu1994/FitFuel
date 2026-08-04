@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
-import { calculateMetabolism } from "@/lib/nutrition";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
+import { calculateMetabolism } from "@/shared/domain/nutrition";
 export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;

@@ -1,4 +1,4 @@
-import { prisma } from "../lib/db";
+import { prisma } from "../../src/server/db";
 
 async function main() {
   const admin = await prisma.app_user.findFirstOrThrow({

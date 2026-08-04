@@ -1,11 +1,11 @@
 import { Prisma } from "@prisma/client";
-import { prisma } from "@/lib/db";
-import { ApiError } from "@/lib/http";
-import { calculateMetabolism } from "@/lib/nutrition";
-import { deleteBatchImages, readStoredImage } from "@/lib/elevatine-storage";
-import { estimateFoodPortionWithMimo } from "@/lib/mimo";
-import { parseElevatineImage } from "@/lib/mimo-vision";
-import type { ParsedElevatineImage } from "@/lib/elevatine-types";
+import { prisma } from "@/server/db";
+import { ApiError } from "@/server/http";
+import { calculateMetabolism } from "@/shared/domain/nutrition";
+import { deleteBatchImages, readStoredImage } from "@/server/elevatine-storage";
+import { estimateFoodPortionWithMimo } from "@/server/mimo";
+import { parseElevatineImage } from "@/server/mimo-vision";
+import type { ParsedElevatineImage } from "@/shared/types/elevatine";
 
 const decimal = (value: number | null) => value === null ? null : new Prisma.Decimal(value);
 const number = (value: Prisma.Decimal | number | null | undefined) => value == null ? null : Number(value);

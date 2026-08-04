@@ -31,7 +31,7 @@ FitFuel 是一个基于 AI 的个人营养记录与饮食管理系统，帮助�
 | [架构设计](./architecture.md) | 系统架构、目录结构、请求流转、认证流程 |
 | [数据库设计](./database.md) | 三 schema 设计、数据模型、ER 关系、迁移历史 |
 | [API 参考](./api-reference.md) | 全部 API 路由、请求/响应格式、权限要求 |
-| [核心模块](./modules.md) | lib 层各模块职责、AI 集成、营养计算、导入导出 |
+| [核心模块](./modules.md) | server/shared/web 各层职责、AI 集成、营养计算、导入导出 |
 | [部署指南](./deployment.md) | 环境变量、本地开发、构建部署、脚本工具 |
 
 ## 快速开始
@@ -90,6 +90,8 @@ npm run db:init               # 创建数据库并执行迁移
 npm run db:verify             # 验证数据库结构
 npm run db:inspect            # 检查连接和表状态
 ```
+
+数据库 schema、迁移和检查脚本统一位于 `infra/database/`；本地运行日志、导入文件和临时上传统一位于被忽略的 `.runtime/`。
 
 ### 开发与构建
 

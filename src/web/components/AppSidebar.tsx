@@ -6,7 +6,7 @@ import {
   BarChart3, CalendarDays, ClipboardList, Dumbbell, Leaf, LogOut, Menu,
   ScanLine, Settings, ShieldCheck, X, History
 } from "lucide-react";
-import { api } from "@/lib/client";
+import { api } from "@/web/client/client";
 
 export type SidebarUser = {
   email: string;

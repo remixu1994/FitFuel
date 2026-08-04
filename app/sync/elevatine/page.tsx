@@ -18,8 +18,8 @@ import {
   X
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
+import { api } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
 
 type Item = {
   id: string;

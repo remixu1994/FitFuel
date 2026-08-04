@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
-import { CorosError, loginToCoros, maskedCorosAccount } from "@/lib/coros";
-import { assertSameOrigin, jsonError } from "@/lib/http";
+import { requireAdmin } from "@/server/auth";
+import { CorosError, loginToCoros, maskedCorosAccount } from "@/server/coros";
+import { assertSameOrigin, jsonError } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {

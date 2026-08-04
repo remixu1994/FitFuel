@@ -1,4 +1,4 @@
-import { loginToCoros, maskedCorosAccount, queryCorosActivities } from "../lib/coros";
+import { loginToCoros, maskedCorosAccount, queryCorosActivities } from "../../src/server/coros";
 
 async function main() {
   const session = await loginToCoros();

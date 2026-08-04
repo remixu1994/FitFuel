@@ -1,7 +1,7 @@
-﻿import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { jsonError } from "@/lib/http";
+import { NextResponse } from "next/server";
+import { requireUser } from "@/server/auth";
+import { db } from "@/server/db";
+import { jsonError } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;

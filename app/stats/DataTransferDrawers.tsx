@@ -5,7 +5,7 @@ import {
   AlertTriangle, ArrowRight, Check, Download, FileSpreadsheet, LoaderCircle,
   Upload, X
 } from "lucide-react";
-import { api } from "@/lib/client";
+import { api } from "@/web/client/client";
 
 type Source = "meals" | "manual" | "import";
 type PreviewRow = {

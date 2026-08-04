@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { parseDailyDataFile } from "@/lib/daily-data-file";
-import { ApiError, assertSameOrigin, jsonError } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { parseDailyDataFile } from "@/server/daily-data-file";
+import { ApiError, assertSameOrigin, jsonError } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";

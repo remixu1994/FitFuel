@@ -7,9 +7,9 @@ import {
   Calculator, Download, Dumbbell, Flame, Leaf, LoaderCircle, Pencil, Plus, RotateCcw, Save,
   Sparkles, Target, TrendingDown, Upload, Utensils, Weight, X, Zap
 } from "lucide-react";
-import { api, chinaDate, shiftDate } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
-import LineChart from "@/components/LineChart";
+import { api, chinaDate, shiftDate } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
+import LineChart from "@/web/components/LineChart";
 import { ExportDrawer, ImportDrawer } from "./DataTransferDrawers";
 
 type StatRecord={record_date:string;weight_kg:number|null;calories_consumed:number;meal_calories:number;manual_calories:number|null;imported_calories:number|null;calories_source:string;activity_calories:number;bmr:number;tef:number;tdee:number;calorie_balance:number};

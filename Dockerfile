@@ -44,7 +44,7 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy Prisma client (generated engine binaries + schema)
 COPY --from=builder /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder /app/node_modules/@prisma ./node_modules/@prisma
-COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/infra/database/prisma ./infra/database/prisma
 
 # Copy built Next.js standalone output
 COPY --from=builder /app/.next/standalone ./
@@ -52,8 +52,8 @@ COPY --from=builder /app/.next/static ./.next/static
 COPY --from=builder /app/public ./public
 
 # Copy database migrations & scripts for manual operations
-COPY --from=builder /app/database ./database
-COPY --from=builder /app/scripts ./scripts
+COPY --from=builder /app/infra/database ./infra/database
+COPY --from=builder /app/tools ./tools
 
 USER nextjs
 

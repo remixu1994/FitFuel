@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import ExcelJS from "exceljs";
-import { ApiError } from "@/lib/http";
+import { ApiError } from "@/server/http";
 
 export type DailyImportRow = {
   date: string;

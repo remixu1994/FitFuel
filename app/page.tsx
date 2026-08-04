@@ -8,9 +8,9 @@ import {
   LogOut, Menu, Moon, Pencil, Plus, Save, ScanLine, Search, Settings, ShieldCheck,
   Sparkles, Sun, Trash2, X, Zap
 } from "lucide-react";
-import { api, chinaDate, shiftDate } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
-import { mealLabel, mealOrder } from "@/lib/meal-types";
+import { api, chinaDate, shiftDate } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
+import { mealLabel, mealOrder } from "@/shared/domain/meal-types";
 
 type Food = {
   key:string;name:string;brand?:string;serving:string;gram_weight:number;calories:number;

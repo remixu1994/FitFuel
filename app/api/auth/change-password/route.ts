@@ -1,8 +1,8 @@
 import argon2 from "argon2";
 import { NextResponse } from "next/server";
-import { createSession, requireUser } from "@/lib/auth";
-import { transaction } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
+import { createSession, requireUser } from "@/server/auth";
+import { transaction } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {

@@ -9,6 +9,7 @@ npm-debug.log*
 .cache
 .workbuddy
 imports
+.runtime
 *.md
 !docs/*.md
 .vscode

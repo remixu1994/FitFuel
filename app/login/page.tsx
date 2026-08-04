@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Leaf, LockKeyhole, Mail } from "lucide-react";
-import { api } from "@/lib/client";
+import { api } from "@/web/client/client";
 
 export default function LoginPage() {
   const router = useRouter();

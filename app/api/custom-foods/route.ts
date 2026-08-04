@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { db, numbers } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { db, numbers } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 type FoodBody = {

@@ -1,8 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, LoaderCircle, CalendarDays } from "lucide-react";
-import { api } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
+import { api } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
 
 type Day={date:string;calories:number;carbs:number;protein:number;fat:number;calories_source:string};
 const pad=(n:number)=>String(n).padStart(2,"0");

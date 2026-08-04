@@ -7,8 +7,8 @@ import {
   Leaf, LoaderCircle, Plus, RefreshCcw, Save, Sparkles, Target, Trash2,
   Wheat, X
 } from "lucide-react";
-import { api } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
+import { api } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
 
 type Profile={email:string;display_name:string;height_cm:number;age:number;gender:string;initial_weight_kg:number;target_weight_kg:number;meal_count:number};
 type Goal={goal_type:string;calories_kcal:number;protein_g:number;carbohydrate_g:number;fat_g:number;water_ml:number};

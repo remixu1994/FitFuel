@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { db, numbers } from "@/lib/db";
-import { jsonError } from "@/lib/http";
-import { mealLabel, mealOrder } from "@/lib/meal-types";
+import { requireUser } from "@/server/auth";
+import { db, numbers } from "@/server/db";
+import { jsonError } from "@/server/http";
+import { mealLabel, mealOrder } from "@/shared/domain/meal-types";
 export const dynamic = "force-dynamic";
 
 type MealItem = {

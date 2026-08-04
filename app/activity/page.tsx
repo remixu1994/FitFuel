@@ -7,9 +7,9 @@ import {
   Flame, Heart, Leaf, LoaderCircle, LogOut, Menu, RefreshCw, ScanLine, Settings,
   ShieldCheck, TrendingUp, X, Zap, Plus, ArrowRight, ChevronLeft, ChevronRight, Pencil
 } from "lucide-react";
-import { api } from "@/lib/client";
-import { AppSidebar } from "@/components/AppSidebar";
-import LineChart from "@/components/LineChart";
+import { api } from "@/web/client/client";
+import { AppSidebar } from "@/web/components/AppSidebar";
+import LineChart from "@/web/components/LineChart";
 import styles from "./activity.module.css";
 
 type User = { id:number; email:string; displayName:string; role:string };

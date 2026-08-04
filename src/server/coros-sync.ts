@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
-import { loginToCoros, queryCorosActivities, type CorosActivity } from "@/lib/coros";
-import { PrismaQueryClient, prisma } from "@/lib/db";
-import { recalculateDailyRecord } from "@/lib/nutrition";
+import { loginToCoros, queryCorosActivities, type CorosActivity } from "@/server/coros";
+import { PrismaQueryClient, prisma } from "@/server/db";
+import { recalculateDailyRecord } from "@/server/services/nutrition";
 
 const DATE_PATTERN = /^2026-\d{2}-\d{2}$/;
 const PAGE_SIZE = 20;

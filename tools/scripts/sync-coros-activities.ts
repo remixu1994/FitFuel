@@ -1,5 +1,5 @@
-import { prisma } from "../lib/db";
-import { syncCorosActivities } from "../lib/coros-sync";
+import { prisma } from "../../src/server/db";
+import { syncCorosActivities } from "../../src/server/coros-sync";
 
 async function main() {
   const configuredEmail = process.env.FITFUEL_ADMIN_EMAIL?.trim().toLowerCase();

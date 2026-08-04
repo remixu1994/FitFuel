@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/auth";
-import { prisma } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, readJson } from "@/lib/http";
+import { requireUser } from "@/server/auth";
+import { prisma } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

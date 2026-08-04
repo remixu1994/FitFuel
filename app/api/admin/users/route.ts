@@ -1,9 +1,9 @@
 import { randomBytes } from "node:crypto";
 import argon2 from "argon2";
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/auth";
-import { db, numbers, transaction } from "@/lib/db";
-import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/lib/http";
+import { requireAdmin } from "@/server/auth";
+import { db, numbers, transaction } from "@/server/db";
+import { ApiError, assertSameOrigin, jsonError, positiveNumber, readJson } from "@/server/http";
 export const dynamic = "force-dynamic";
 
 type CreateUserBody = {

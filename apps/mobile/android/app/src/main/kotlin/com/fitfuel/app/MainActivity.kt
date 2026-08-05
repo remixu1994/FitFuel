@@ -1,4 +1,4 @@
-package com.fitfuel.mobile
+package com.fitfuel.app
 
 import io.flutter.embedding.android.FlutterActivity
 

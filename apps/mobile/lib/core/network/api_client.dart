@@ -14,8 +14,27 @@ class ApiClient {
   Future<Response<T>> get<T>(String path, {Map<String, dynamic>? query, bool skipRefresh = false}) =>
       _send(() => dio.get<T>(path, queryParameters: query, options: _options()), skipRefresh: skipRefresh);
 
-  Future<Response<T>> post<T>(String path, {Object? data, bool skipRefresh = false}) =>
-      _send(() => dio.post<T>(path, data: data, options: _options()), skipRefresh: skipRefresh);
+  Future<Response<T>> post<T>(
+    String path, {
+    Object? data,
+    bool skipRefresh = false,
+    ProgressCallback? onSendProgress,
+  }) =>
+      _send(
+        () => dio.post<T>(
+          path,
+          data: data,
+          options: _options(),
+          onSendProgress: onSendProgress,
+        ),
+        skipRefresh: skipRefresh,
+      );
+
+  Future<Response<T>> patch<T>(String path, {Object? data, bool skipRefresh = false}) =>
+      _send(() => dio.patch<T>(path, data: data, options: _options()), skipRefresh: skipRefresh);
+
+  Future<Response<T>> delete<T>(String path, {Object? data, bool skipRefresh = false}) =>
+      _send(() => dio.delete<T>(path, data: data, options: _options()), skipRefresh: skipRefresh);
 
   Future<Response<T>> _send<T>(Future<Response<T>> Function() action, {required bool skipRefresh}) async {
     try {

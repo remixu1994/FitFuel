@@ -40,6 +40,7 @@ model app_user {
   app_user                app_user?                 @relation("app_userToapp_user", fields: [created_by], references: [id], onUpdate: NoAction)
   other_app_user          app_user[]                @relation("app_userToapp_user")
   auth_session            auth_session[]
+  mobile_auth_session     mobile_auth_session[]
   custom_food             custom_food[]
   daily_data_import_batch daily_data_import_batch[]
   elevatine_import_batch  elevatine_import_batch[]
@@ -84,6 +85,24 @@ model auth_session {
 
   @@index([expires_at], map: "ix_auth_session_expiry")
   @@index([user_id], map: "ix_auth_session_user")
+  @@schema("fitfuel")
+}
+
+model mobile_auth_session {
+  id                BigInt    @id @default(autoincrement())
+  user_id           BigInt
+  access_token_hash String    @unique @db.Char(64)
+  refresh_token_hash String   @unique @db.Char(64)
+  access_expires_at DateTime  @db.Timestamptz(6)
+  refresh_expires_at DateTime @db.Timestamptz(6)
+  device_name       String    @default("FitFuel Android") @db.VarChar(120)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  last_seen_at      DateTime  @default(now()) @db.Timestamptz(6)
+  revoked_at        DateTime? @db.Timestamptz(6)
+  app_user          app_user  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "ix_mobile_auth_session_user")
+  @@index([refresh_expires_at], map: "ix_mobile_auth_session_refresh_expiry")
   @@schema("fitfuel")
 }
 

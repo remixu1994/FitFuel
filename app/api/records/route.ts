@@ -1,9 +1,34 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/server/auth";
 import { db, numbers } from "@/server/db";
-import { jsonError } from "@/server/http";
+import { ApiError, jsonError } from "@/server/http";
 import { mealLabel, mealOrder } from "@/shared/domain/meal-types";
 export const dynamic = "force-dynamic";
+
+const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+
+function validDate(value: string) {
+  if (!DATE_PATTERN.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return Number.isFinite(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+function shiftDate(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function shanghaiToday() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Shanghai",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const value = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${value.year}-${value.month}-${value.day}`;
+}
 
 type MealItem = {
   id: number;
@@ -50,18 +75,28 @@ type RecordDay = {
 export async function GET(request: Request) {
   try {
     const user = await requireUser();
-    const requestedDays = Number(new URL(request.url).searchParams.get("days") ?? 7);
-    const days = [7, 30, 90].includes(requestedDays) ? requestedDays : 7;
-    const rangeSql = `
-      (now() at time zone 'Asia/Shanghai')::date - ($2::int - 1)
-    `;
+    const params = new URL(request.url).searchParams;
+    const requestedStart = params.get("start")?.trim() ?? "";
+    const requestedEnd = params.get("end")?.trim() ?? "";
+    if (Boolean(requestedStart) !== Boolean(requestedEnd)) {
+      throw new ApiError(400, "开始日期和结束日期必须同时提供");
+    }
+    const requestedDays = Number(params.get("days") ?? 7);
+    const fallbackDays = [7, 30, 90].includes(requestedDays) ? requestedDays : 7;
+    const endDate = requestedEnd || shanghaiToday();
+    const startDate = requestedStart || shiftDate(endDate, 1 - fallbackDays);
+    if (!validDate(startDate) || !validDate(endDate)) throw new ApiError(400, "日期格式必须为 YYYY-MM-DD");
+    const periodDays = Math.round(
+      (new Date(`${endDate}T00:00:00.000Z`).getTime() - new Date(`${startDate}T00:00:00.000Z`).getTime()) / 86_400_000
+    ) + 1;
+    if (periodDays < 1 || periodDays > 1826) throw new ApiError(400, "查询时间范围必须在 1 至 1826 天之间");
 
     const [dateRows, mealRows] = await Promise.all([
       db.query(
         `with date_range as (
            select generate_series(
-             ${rangeSql},
-             (now() at time zone 'Asia/Shanghai')::date,
+             $2::date,
+             $3::date,
              interval '1 day'
            )::date as record_date
          ),
@@ -70,7 +105,7 @@ export async function GET(request: Request) {
                   coalesce(sum(amount_ml), 0)::int as total
            from fitfuel.water_log
            where user_id=$1 and deleted_at is null
-             and (logged_at at time zone 'Asia/Shanghai')::date >= ${rangeSql}
+             and (logged_at at time zone 'Asia/Shanghai')::date between $2::date and $3::date
            group by 1
          )
          select to_char(r.record_date, 'YYYY-MM-DD') as date,
@@ -84,7 +119,7 @@ export async function GET(request: Request) {
            on d.user_id=$1 and d.record_date=r.record_date and d.deleted_at is null
          left join water w on w.record_date=r.record_date
          order by r.record_date desc`,
-        [user.id, days]
+        [user.id, startDate, endDate]
       ),
       db.query(
         `select to_char(d.record_date, 'YYYY-MM-DD') as date,
@@ -99,9 +134,9 @@ export async function GET(request: Request) {
          left join fitfuel.meal_item mi
            on mi.meal_id=m.id and mi.deleted_at is null
          where d.user_id=$1 and d.deleted_at is null
-           and d.record_date >= ${rangeSql}
+           and d.record_date between $2::date and $3::date
          order by d.record_date desc,m.sort_order,mi.created_at`,
-        [user.id, days]
+        [user.id, startDate, endDate]
       )
     ]);
 
@@ -166,7 +201,9 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      range: `${days}d`,
+      range: `${periodDays}d`,
+      startDate,
+      endDate,
       records: records.map(day => {
         const items = day.meals.flatMap(meal => meal.items);
         const sum = (key: keyof Pick<MealItem, "calories" | "protein" | "carbohydrate" | "fat" | "dietaryFiber">) =>

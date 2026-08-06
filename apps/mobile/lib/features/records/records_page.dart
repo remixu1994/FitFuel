@@ -15,7 +15,8 @@ class RecordsPage extends ConsumerStatefulWidget {
 }
 
 class _RecordsPageState extends ConsumerState<RecordsPage> {
-  int days = 7;
+  late DateTime startDate;
+  late DateTime endDate;
   bool loading = true;
   String? error;
   List<Map<String, dynamic>> records = const [];
@@ -23,8 +24,15 @@ class _RecordsPageState extends ConsumerState<RecordsPage> {
   @override
   void initState() {
     super.initState();
+    endDate = DateTime.now();
+    startDate = endDate.subtract(const Duration(days: 6));
     _load();
   }
+
+  int get rangeDays => endDate.difference(startDate).inDays + 1;
+
+  String get startText => DateFormat('yyyy-MM-dd').format(startDate);
+  String get endText => DateFormat('yyyy-MM-dd').format(endDate);
 
   Future<void> _load() async {
     setState(() {
@@ -34,7 +42,7 @@ class _RecordsPageState extends ConsumerState<RecordsPage> {
     try {
       final response = await ref.read(apiClientProvider).get<Map<String, dynamic>>(
         '/api/records',
-        query: {'days': days},
+        query: {'start': startText, 'end': endText},
       );
       if (!mounted) return;
       setState(() {
@@ -50,9 +58,23 @@ class _RecordsPageState extends ConsumerState<RecordsPage> {
     }
   }
 
-  void _changeDays(int value) {
-    if (value == days) return;
-    setState(() => days = value);
+  Future<void> _pickRange() async {
+    final today = DateTime.now();
+    final selected = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(today.year - 5, today.month, today.day),
+      lastDate: DateTime(today.year, today.month, today.day),
+      initialDateRange: DateTimeRange(start: startDate, end: endDate),
+      helpText: '选择饮食记录时间范围',
+      cancelText: '取消',
+      confirmText: '确定',
+      saveText: '确定',
+    );
+    if (selected == null || !mounted) return;
+    setState(() {
+      startDate = selected.start;
+      endDate = selected.end;
+    });
     _load();
   }
 
@@ -67,22 +89,19 @@ class _RecordsPageState extends ConsumerState<RecordsPage> {
       actions: [IconButton(onPressed: _load, icon: const Icon(Icons.refresh))],
       child: Column(
         children: [
-          Wrap(
-            spacing: 8,
-            children: [
-              for (final value in const [7, 30, 90])
-                ChoiceChip(
-                  label: Text('$value天'),
-                  selected: days == value,
-                  onSelected: (_) => _changeDays(value),
-                ),
-            ],
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: loading ? null : _pickRange,
+              icon: const Icon(Icons.date_range_outlined),
+              label: Text('$startText  —  $endText'),
+            ),
           ),
           const SizedBox(height: 18),
           SurfaceSection(
             child: Row(
               children: [
-                MetricTile(label: '有摄入记录', value: '$recorded', unit: '/ $days天'),
+                MetricTile(label: '有摄入记录', value: '$recorded', unit: '/ $rangeDays天'),
                 MetricTile(label: '日均摄入', value: recorded == 0 ? '0' : (totalCalories / recorded).round().toString(), unit: 'kcal', color: FitFuelColors.orange),
                 MetricTile(label: '已记录餐次', value: '$mealCount', unit: '餐', color: FitFuelColors.purple),
               ],

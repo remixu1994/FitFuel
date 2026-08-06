@@ -178,17 +178,22 @@ class _TodayPageState extends ConsumerState<TodayPage> {
                 ),
                 const SizedBox(height: 10),
                 SurfaceSection(
+                  padding: const EdgeInsets.fromLTRB(14, 16, 14, 14),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text('营养目标进度', style: TextStyle(fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          MetricTile(label: '热量', value: _number(record['calories_consumed']).toStringAsFixed(0), unit: '/ ${_number(goal['calories_kcal']).toStringAsFixed(0)} kcal', color: FitFuelColors.orange),
-                          MetricTile(label: '碳水', value: carbohydrate.toStringAsFixed(1), unit: '/ ${_number(goal['carbohydrate_g']).toStringAsFixed(0)} g', color: FitFuelColors.blue),
-                          MetricTile(label: '蛋白质', value: protein.toStringAsFixed(1), unit: '/ ${_number(goal['protein_g']).toStringAsFixed(0)} g', color: FitFuelColors.green),
-                          MetricTile(label: '脂肪', value: fat.toStringAsFixed(1), unit: '/ ${_number(goal['fat_g']).toStringAsFixed(0)} g', color: FitFuelColors.yellow),
+                          Expanded(child: _NutritionTarget(label: '热量(千卡)', current: _number(record['calories_consumed']), goal: _number(goal['calories_kcal']), color: FitFuelColors.blue)),
+                          const SizedBox(width: 5),
+                          Expanded(child: _NutritionTarget(label: '碳水(g)', current: carbohydrate, goal: _number(goal['carbohydrate_g']), color: FitFuelColors.purple)),
+                          const SizedBox(width: 5),
+                          Expanded(child: _NutritionTarget(label: '蛋白质(g)', current: protein, goal: _number(goal['protein_g']), color: FitFuelColors.yellow)),
+                          const SizedBox(width: 5),
+                          Expanded(child: _NutritionTarget(label: '脂肪(g)', current: fat, goal: _number(goal['fat_g']), color: FitFuelColors.orange)),
                         ],
                       ),
                     ],
@@ -225,6 +230,8 @@ class _TodayPageState extends ConsumerState<TodayPage> {
                                     children: [
                                       Expanded(child: Text('${item.name}\n${item.quantity} ${item.unit}', style: const TextStyle(height: 1.4))),
                                       Text('${item.calories.toStringAsFixed(0)} kcal', style: const TextStyle(fontWeight: FontWeight.w700)),
+                                      const SizedBox(width: 4),
+                                      const Icon(Icons.chevron_right, size: 18, color: FitFuelColors.muted),
                                     ],
                                   ),
                                 ),
@@ -267,6 +274,53 @@ class _TodayPageState extends ConsumerState<TodayPage> {
 
   double _number(dynamic value) =>
       value is num ? value.toDouble() : double.tryParse('$value') ?? 0;
+}
+
+class _NutritionTarget extends StatelessWidget {
+  const _NutritionTarget({required this.label, required this.current, required this.goal, required this.color});
+
+  final String label;
+  final double current;
+  final double goal;
+  final Color color;
+
+  String _value(double value) => value == value.roundToDouble() ? value.toStringAsFixed(0) : value.toStringAsFixed(1);
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = goal <= 0 ? 0.0 : (current / goal).clamp(0.0, 1.0);
+    final currentText = _value(current);
+    final goalText = _value(goal);
+    return Semantics(
+      label: '$label，$currentText / $goalText',
+      child: Column(children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: progress),
+              duration: const Duration(milliseconds: 520),
+              curve: Curves.easeOutCubic,
+              builder: (context, value, _) => Stack(fit: StackFit.expand, children: [
+                CircularProgressIndicator(value: 1, strokeWidth: 7, color: color.withValues(alpha: .14), strokeCap: StrokeCap.round),
+                CircularProgressIndicator(value: value, strokeWidth: 7, color: color, strokeCap: StrokeCap.round),
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                    Expanded(child: FittedBox(fit: BoxFit.scaleDown, child: Text(currentText, maxLines: 1, style: const TextStyle(color: FitFuelColors.ink, fontSize: 22, height: 1, fontWeight: FontWeight.w800)))),
+                    FittedBox(fit: BoxFit.scaleDown, child: Text('/$goalText', maxLines: 1, style: const TextStyle(color: FitFuelColors.muted, fontSize: 11, height: 1, fontWeight: FontWeight.w600))),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        ),
+        const SizedBox(height: 9),
+        SizedBox(height: 17, child: FittedBox(fit: BoxFit.scaleDown, child: Text(label, maxLines: 1, style: const TextStyle(color: FitFuelColors.muted, fontSize: 12, fontWeight: FontWeight.w600)))),
+      ]),
+    );
+  }
 }
 
 class _MealItemEditor extends ConsumerStatefulWidget {
@@ -540,6 +594,12 @@ class _FoodSearchSheetState extends ConsumerState<_FoodSearchSheet> {
   List<Map<String, dynamic>> foods = const [];
 
   @override
+  void initState() {
+    super.initState();
+    _search();
+  }
+
+  @override
   void dispose() {
     queryController.dispose();
     super.dispose();
@@ -547,7 +607,6 @@ class _FoodSearchSheetState extends ConsumerState<_FoodSearchSheet> {
 
   Future<void> _search() async {
     final query = queryController.text.trim();
-    if (query.isEmpty) return;
     setState(() {
       loading = true;
       error = null;
@@ -555,7 +614,7 @@ class _FoodSearchSheetState extends ConsumerState<_FoodSearchSheet> {
     try {
       final response = await ref.read(apiClientProvider).get<Map<String, dynamic>>(
         '/api/foods',
-        query: {'q': query},
+        query: query.isEmpty ? null : {'q': query},
       );
       if (!mounted) return;
       setState(() {
@@ -627,9 +686,17 @@ class _FoodSearchSheetState extends ConsumerState<_FoodSearchSheet> {
                 ),
               const SizedBox(height: 10),
               if (loading) const LinearProgressIndicator(),
+              if (!loading && foods.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Text(
+                    queryController.text.trim().isEmpty ? '最近添加（最多 20 条）' : '搜索结果',
+                    style: const TextStyle(fontSize: 12, color: FitFuelColors.muted),
+                  ),
+                ),
               Expanded(
                 child: foods.isEmpty && !loading
-                    ? const Center(child: Text('输入食品名称开始搜索', style: TextStyle(color: FitFuelColors.muted)))
+                    ? Center(child: Text(queryController.text.trim().isEmpty ? '暂无可复用的最近食品' : '没有找到相关食品', style: const TextStyle(color: FitFuelColors.muted)))
                     : ListView.separated(
                         itemCount: foods.length,
                         separatorBuilder: (_, _) => const Divider(height: 1),

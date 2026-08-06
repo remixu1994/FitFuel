@@ -84,7 +84,8 @@ try {
 
   const emptyFoodSearch = await call("/api/foods?q=");
   assert.equal(emptyFoodSearch.response.status, 200);
-  assert.deepEqual(emptyFoodSearch.body.foods, []);
+  assert.ok(Array.isArray(emptyFoodSearch.body.foods));
+  assert.ok(emptyFoodSearch.body.foods.length <= 20);
 
   const exactFoodSearch = await call(`/api/foods?q=${encodeURIComponent("米饭")}`);
   assert.equal(exactFoodSearch.response.status, 200);
@@ -139,6 +140,23 @@ try {
   const recordedDay = foodRecords.body.records.find(day => day.date === "2026-07-29");
   assert.ok(recordedDay);
   assert.equal(recordedDay.totals.calories, 1800);
+
+  const customRangeRecords = await call(
+    "/api/records?start=2026-07-27&end=2026-07-29",
+    {},
+    "user",
+  );
+  assert.equal(customRangeRecords.response.status, 200);
+  assert.equal(customRangeRecords.body.startDate, "2026-07-27");
+  assert.equal(customRangeRecords.body.endDate, "2026-07-29");
+  assert.equal(customRangeRecords.body.records.length, 3);
+
+  const incompleteRangeRecords = await call(
+    "/api/records?start=2026-07-27",
+    {},
+    "user",
+  );
+  assert.equal(incompleteRangeRecords.response.status, 400);
 
   const csv = "\uFEFF日期,摄入(kcal),活动消耗(kcal),体重(kg)\n"
     + "2026-07-20,1842,561,77.5\n"

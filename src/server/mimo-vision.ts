@@ -1,6 +1,16 @@
 import { ApiError } from "@/server/http";
 import type { ParsedElevatineImage, ParsedFood, ParsedMeal } from "@/shared/types/elevatine";
 
+const DEFAULT_VISION_TIMEOUT_MS = 300_000;
+
+function visionTimeoutMs() {
+  const configured = Number(process.env.MIMO_VISION_TIMEOUT_MS);
+  if (!Number.isFinite(configured) || configured < 30_000 || configured > 900_000) {
+    return DEFAULT_VISION_TIMEOUT_MS;
+  }
+  return Math.round(configured);
+}
+
 function required(name: "MIMO_BASE_URL" | "MIMO_API_KEY") {
   const value = process.env[name]?.trim();
   if (!value) throw new ApiError(503, `AI 环境变量 ${name} 尚未配置`);
@@ -120,6 +130,7 @@ function requestBody(model: string, image: Buffer, retry: boolean) {
   return {
     model,
     temperature: 0,
+    max_tokens: 4096,
     response_format: { type: "json_object" },
     messages: [
       {
@@ -155,7 +166,8 @@ export async function parseElevatineImage(image: Buffer): Promise<ParsedElevatin
   const model = process.env.MIMO_VISION_MODEL?.trim() || process.env.MIMO_MODEL?.trim();
   if (!model) throw new ApiError(503, "AI 环境变量 MIMO_VISION_MODEL 尚未配置");
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 120_000);
+  const timeoutMs = visionTimeoutMs();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     let lastError: unknown;
     for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -176,7 +188,9 @@ export async function parseElevatineImage(image: Buffer): Promise<ParsedElevatin
     throw lastError instanceof Error ? lastError : new ApiError(502, "MiMo 未返回可解析的 JSON");
   } catch (error) {
     if (error instanceof ApiError) throw error;
-    if (error instanceof Error && error.name === "AbortError") throw new ApiError(504, "MiMo 视觉解析超时");
+    if (error instanceof Error && error.name === "AbortError") {
+      throw new ApiError(504, `MiMo 视觉解析超过 ${Math.round(timeoutMs / 1000)} 秒`);
+    }
     throw error;
   } finally {
     clearTimeout(timer);

@@ -116,13 +116,11 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
           stage = 'MiMo 正在解析 ${files.length} 张截图';
         });
       }
-      final parsed = await ref
-          .read(apiClientProvider)
-          .post<Map<String, dynamic>>('/api/elevatine-imports/$id/parse', data: const {});
+      final parsed = await _requestParseAndWait(id);
       if (!mounted) return;
       setState(() {
-        batch = parsed.data ?? const {};
-        stage = '解析完成，请核对后写入';
+        batch = parsed;
+        stage = _batchStage(parsed);
       });
       await _loadHistory();
     } on DioException catch (exception) {
@@ -133,6 +131,59 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
       if (mounted) setState(() => busy = false);
     }
   }
+
+  Future<Map<String, dynamic>> _requestParseAndWait(String id) async {
+    try {
+      final response = await ref.read(apiClientProvider).post<Map<String, dynamic>>(
+            '/api/elevatine-imports/$id/parse?async=1',
+            data: const {},
+          );
+      final value = response.data ?? const <String, dynamic>{};
+      if (_isTerminalBatch(value)) return value;
+    } on DioException catch (exception) {
+      final status = exception.response?.statusCode ?? 0;
+      if (status >= 400 && status < 500 && status != 408 && status != 429) rethrow;
+      // The reverse proxy may time out while MiMo continues on the server.
+      // Polling the batch avoids reporting a successful background parse as failed.
+    }
+    return _pollBatch(id);
+  }
+
+  Future<Map<String, dynamic>> _pollBatch(String id) async {
+    final deadline = DateTime.now().add(const Duration(minutes: 8));
+    DioException? lastNetworkError;
+    while (DateTime.now().isBefore(deadline)) {
+      if (!mounted) throw StateError('页面已关闭');
+      setState(() => stage = 'MiMo 正在解析，完成后将自动进入审核');
+      await Future<void>.delayed(const Duration(seconds: 3));
+      try {
+        final response = await ref
+            .read(apiClientProvider)
+            .get<Map<String, dynamic>>('/api/elevatine-imports/$id');
+        final value = response.data ?? const <String, dynamic>{};
+        if (_isTerminalBatch(value)) return value;
+        lastNetworkError = null;
+      } on DioException catch (exception) {
+        final status = exception.response?.statusCode ?? 0;
+        if (status == 401 || status == 403 || status == 404) rethrow;
+        lastNetworkError = exception;
+      }
+    }
+    if (lastNetworkError != null) throw lastNetworkError;
+    throw StateError('AI 解析超过 8 分钟，批次仍在服务器处理中，请稍后从最近同步中打开');
+  }
+
+  bool _isTerminalBatch(Map<String, dynamic> value) {
+    final status = '${value['status'] ?? ''}';
+    return status == 'review' || status == 'failed' || status == 'committed';
+  }
+
+  String _batchStage(Map<String, dynamic> value) => switch ('${value['status'] ?? ''}') {
+        'review' => '解析完成，请核对后写入',
+        'failed' => '解析失败，请查看具体原因',
+        'committed' => '同步已完成',
+        _ => 'MiMo 正在解析，完成后将自动进入审核',
+      };
 
   Future<void> _openBatch(String id) async {
     if (busy) return;
@@ -148,7 +199,7 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
       if (!mounted) return;
       setState(() {
         batch = response.data ?? const {};
-        stage = batch?['status'] == 'committed' ? '同步已完成' : '解析完成，请核对后写入';
+        stage = _batchStage(batch!);
       });
     } on DioException catch (exception) {
       if (mounted) setState(() => error = _apiMessage(exception, '同步批次读取失败'));
@@ -199,13 +250,11 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
       stage = 'MiMo 正在重新解析截图';
     });
     try {
-      final response = await ref
-          .read(apiClientProvider)
-          .post<Map<String, dynamic>>('/api/elevatine-imports/$id/parse', data: const {});
+      final value = await _requestParseAndWait(id);
       if (!mounted) return;
       setState(() {
-        batch = response.data ?? batch;
-        stage = '解析完成，请核对后写入';
+        batch = value;
+        stage = _batchStage(value);
       });
       await _loadHistory();
     } on DioException catch (exception) {

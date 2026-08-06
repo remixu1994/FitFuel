@@ -160,6 +160,10 @@ export async function estimateFoodPortionWithMimo(
     ? `1${unit?.trim() || "份"}`
     : `${Math.round(quantity * 1000) / 1000}${unit?.trim() || "份"}`;
   const { baseUrl, apiKey, model } = getMimoConfig();
+  const configuredTimeout = Number(process.env.MIMO_PORTION_TIMEOUT_MS || 120_000);
+  const timeoutMs = Number.isFinite(configuredTimeout)
+    ? Math.min(300_000, Math.max(15_000, configuredTimeout))
+    : 120_000;
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/chat/completions`, {
@@ -178,7 +182,7 @@ export async function estimateFoodPortionWithMimo(
         temperature: 0.15,
         max_tokens: 500
       }),
-      signal: AbortSignal.timeout(25_000),
+      signal: AbortSignal.timeout(timeoutMs),
       cache: "no-store"
     });
   } catch (error) {

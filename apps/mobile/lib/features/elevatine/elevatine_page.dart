@@ -241,6 +241,129 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
     }
   }
 
+  Future<void> _enrichNutrition() async {
+    final id = '${batch?['id'] ?? ''}';
+    if (id.isEmpty || busy) return;
+    setState(() {
+      busy = true;
+      error = null;
+      stage = '正在匹配食品库并补全营养';
+    });
+    try {
+      final response = await ref
+          .read(apiClientProvider)
+          .post<Map<String, dynamic>>('/api/elevatine-imports/$id/enrich', data: const {});
+      if (!mounted) return;
+      setState(() {
+        batch = response.data ?? batch;
+        stage = _batchStage(batch!);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('食品营养补全完成')),
+      );
+    } on DioException catch (exception) {
+      if (mounted) setState(() => error = _apiMessage(exception, '食品营养补全失败，请稍后重试'));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
+  Future<void> _editImportItem(Map<String, dynamic> item) async {
+    final id = '${batch?['id'] ?? ''}';
+    if (id.isEmpty || busy || batch?['status'] != 'review') return;
+    final name = TextEditingController(text: '${item['food_name'] ?? ''}');
+    final quantity = TextEditingController(text: '${item['quantity'] ?? ''}');
+    final unit = TextEditingController(text: '${item['unit'] ?? ''}');
+    final calories = TextEditingController(text: '${item['calories'] ?? 0}');
+    final carbohydrate = TextEditingController(text: '${item['carbohydrate'] ?? ''}');
+    final protein = TextEditingController(text: '${item['protein'] ?? ''}');
+    final fat = TextEditingController(text: '${item['fat'] ?? ''}');
+    final edited = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('编辑食品营养', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 16),
+              TextField(controller: name, decoration: const InputDecoration(labelText: '食品名称')),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: TextField(controller: quantity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '数量'))),
+                const SizedBox(width: 12),
+                Expanded(child: TextField(controller: unit, decoration: const InputDecoration(labelText: '单位'))),
+              ]),
+              const SizedBox(height: 12),
+              TextField(controller: calories, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '热量 kcal')),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: TextField(controller: carbohydrate, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '碳水 g'))),
+                const SizedBox(width: 12),
+                Expanded(child: TextField(controller: protein, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '蛋白质 g'))),
+              ]),
+              const SizedBox(height: 12),
+              TextField(controller: fat, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '脂肪 g')),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () {
+                    final kcal = double.tryParse(calories.text);
+                    if (name.text.trim().isEmpty || kcal == null || kcal <= 0) return;
+                    Navigator.pop(context, {
+                      'id': '${item['id']}',
+                      'foodName': name.text.trim(),
+                      'quantity': double.tryParse(quantity.text),
+                      'unit': unit.text.trim().isEmpty ? null : unit.text.trim(),
+                      'calories': kcal,
+                      'carbohydrate': double.tryParse(carbohydrate.text),
+                      'protein': double.tryParse(protein.text),
+                      'fat': double.tryParse(fat.text),
+                    });
+                  },
+                  child: const Text('保存食品信息'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    name.dispose();
+    quantity.dispose();
+    unit.dispose();
+    calories.dispose();
+    carbohydrate.dispose();
+    protein.dispose();
+    fat.dispose();
+    if (edited == null || !mounted) return;
+    setState(() {
+      busy = true;
+      error = null;
+      stage = '正在保存食品营养';
+    });
+    try {
+      final response = await ref.read(apiClientProvider).patch<Map<String, dynamic>>(
+        '/api/elevatine-imports/$id',
+        data: {'items': [edited]},
+      );
+      if (!mounted) return;
+      setState(() {
+        batch = response.data ?? batch;
+        stage = _batchStage(batch!);
+      });
+    } on DioException catch (exception) {
+      if (mounted) setState(() => error = _apiMessage(exception, '食品信息保存失败'));
+    } finally {
+      if (mounted) setState(() => busy = false);
+    }
+  }
+
   Future<void> _retryParse() async {
     final id = '${batch?['id'] ?? ''}';
     if (id.isEmpty || busy) return;
@@ -407,6 +530,10 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
         .map((image) => '${image['error_message']}')
         .toSet()
         .toList();
+    final nutritionFailures = days.fold<int>(0, (total, day) {
+      final items = (day['elevatine_import_item'] as List?) ?? const [];
+      return total + items.whereType<Map>().where((item) => item['match_status'] == 'estimate_failed').length;
+    });
     return SurfaceSection(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,12 +560,31 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
               ),
             )
           else
-            ...days.map((day) => _DayReview(day: day)),
+            ...days.map((day) => _DayReview(
+                  day: day,
+                  onEdit: status == 'review' ? _editImportItem : null,
+                )),
           if (unmatched > 0)
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: Text('有 $unmatched 个食品详情无法自动匹配日期，需要在 Web 审核页面处理。', style: TextStyle(color: Colors.orange.shade800)),
             ),
+          if (nutritionFailures > 0) ...[
+            const SizedBox(height: 12),
+            Text(
+              '有 $nutritionFailures 个食品尚未补全营养，不能以 0 kcal 写入。',
+              style: TextStyle(color: Colors.orange.shade800),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: busy ? null : _enrichNutrition,
+                icon: const Icon(Icons.auto_fix_high),
+                label: const Text('匹配食品库并重新补全'),
+              ),
+            ),
+          ],
           if (error != null)
             Padding(padding: const EdgeInsets.only(top: 10), child: Text(error!, style: TextStyle(color: Colors.red.shade700))),
           const SizedBox(height: 16),
@@ -456,7 +602,7 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
                         label: Text(busy ? stage : '重新解析当前截图'),
                       )
                 : FilledButton.icon(
-                    onPressed: busy || days.isEmpty || unmatched > 0 ? null : _commit,
+                    onPressed: busy || days.isEmpty || unmatched > 0 || nutritionFailures > 0 ? null : _commit,
                     icon: busy ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.check),
                     label: Text(busy ? stage : '确认并写入 FitFuel'),
                   ),
@@ -514,9 +660,10 @@ class _ElevatinePageState extends ConsumerState<ElevatinePage> {
 }
 
 class _DayReview extends StatelessWidget {
-  const _DayReview({required this.day});
+  const _DayReview({required this.day, this.onEdit});
 
   final Map<String, dynamic> day;
+  final ValueChanged<Map<String, dynamic>>? onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -549,13 +696,26 @@ class _DayReview extends StatelessWidget {
           if (items.isNotEmpty) ...[
             const Divider(height: 22),
             ...items.take(8).map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 3),
-                    child: Row(
+                  (item) => InkWell(
+                    onTap: onEdit == null ? null : () => onEdit!(item),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: Row(
                       children: [
                         Expanded(child: Text('${item['food_name'] ?? '食品'}', style: const TextStyle(fontSize: 13))),
-                        Text('${_number(item['calories']).toStringAsFixed(0)} kcal', style: const TextStyle(fontSize: 12)),
+                        Text(
+                          item['match_status'] == 'estimate_failed'
+                              ? '待补全'
+                              : '${_number(item['calories']).toStringAsFixed(0)} kcal',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: item['match_status'] == 'estimate_failed' ? Colors.orange.shade800 : null,
+                          ),
+                        ),
+                        if (onEdit != null) const Icon(Icons.chevron_right, size: 18, color: FitFuelColors.muted),
                       ],
+                    ),
                     ),
                   ),
                 ),

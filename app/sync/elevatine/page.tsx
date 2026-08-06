@@ -195,6 +195,10 @@ export default function ElevatineSyncPage() {
     }
     return [...result.entries()];
   }, [day]);
+  const nutritionFailures = useMemo(() =>
+    batch?.elevatine_import_day.reduce((total, entry) =>
+      total + entry.elevatine_import_item.filter(item => item.match_status === "estimate_failed").length, 0
+    ) || 0, [batch]);
 
   const addFiles = (incoming: File[]) => {
     const next = [...files];
@@ -236,6 +240,17 @@ export default function ElevatineSyncPage() {
       loadHistory();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "提交失败");
+    }
+  };
+  const enrichNutrition = async () => {
+    if (!batch) return;
+    setError("");
+    try {
+      setBatch(await api<Batch>(`/api/elevatine-imports/${batch.id}/enrich`, {
+        method: "POST", body: "{}"
+      }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "食品营养补全失败");
     }
   };
 
@@ -364,7 +379,11 @@ export default function ElevatineSyncPage() {
                 }); refresh();
               }}><option value="">选择日期</option>{batch.elevatine_import_day.map(entry => <option value={entry.id} key={entry.id}>{dateLabel(entry.record_date)}</option>)}</select></label>
             ))}</div>}
-            <button className="eva-primary" disabled={!batch.elevatine_import_day.length || !!batch.unmatched.length} onClick={commit}>
+            {!!nutritionFailures && <div className="eva-issues"><b>{nutritionFailures} 个食品待补全营养</b><small>系统会先匹配共享/私人食品库，未命中时再由 MiMo 估算。</small></div>}
+            {!!nutritionFailures && <button className="eva-primary" onClick={enrichNutrition}>
+              <Sparkles/>匹配食品库并重新补全
+            </button>}
+            <button className="eva-primary" disabled={!batch.elevatine_import_day.length || !!batch.unmatched.length || !!nutritionFailures} onClick={commit}>
               <Check/>确认并写入 FitFuel <ChevronRight/>
             </button>
           </aside>

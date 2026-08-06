@@ -6,6 +6,7 @@ import { deleteBatchImages, readStoredImage } from "@/server/elevatine-storage";
 import { estimateFoodPortionWithMimo } from "@/server/mimo";
 import { parseElevatineImage } from "@/server/mimo-vision";
 import type { ParsedElevatineImage } from "@/shared/types/elevatine";
+import { normalizeFoodName, resolveFoodNutritionFromCatalog } from "@/server/services/foods/resolve-food-nutrition";
 
 const decimal = (value: number | null) => value === null ? null : new Prisma.Decimal(value);
 const number = (value: Prisma.Decimal | number | null | undefined) => value == null ? null : Number(value);
@@ -48,6 +49,10 @@ async function parallelLimit<T>(items: T[], limit: number, work: (item: T) => Pr
 }
 
 async function enrichMissingBatchItems(batchId: bigint) {
+  const batch = await prisma.elevatine_import_batch.findUniqueOrThrow({
+    where: { id: batchId },
+    select: { user_id: true }
+  });
   const items = await prisma.elevatine_import_item.findMany({
     where: {
       selected: true,
@@ -63,6 +68,27 @@ async function enrichMissingBatchItems(batchId: bigint) {
   });
   const estimates = new Map<string, ReturnType<typeof estimateFoodPortionWithMimo>>();
   await parallelLimit(items, 3, async item => {
+    const catalog = await resolveFoodNutritionFromCatalog({
+      userId: batch.user_id,
+      name: item.food_name,
+      quantity: number(item.quantity),
+      unit: item.unit
+    });
+    if (catalog) {
+      await prisma.elevatine_import_item.update({
+        where: { id: item.id },
+        data: {
+          calories: decimal(catalog.calories)!,
+          carbohydrate: decimal(catalog.carbohydrate),
+          protein: decimal(catalog.protein),
+          fat: decimal(catalog.fat),
+          confidence: decimal(catalog.confidence),
+          match_status: "matched",
+          updated_at: new Date()
+        }
+      });
+      return;
+    }
     const unit = item.unit || "份";
     const isMass = /^(g|克|ml|毫升)$/i.test(unit.trim());
     const baseQuantity = isMass ? 100 : 1;
@@ -109,6 +135,94 @@ async function enrichMissingBatchItems(batchId: bigint) {
       });
     }
   });
+}
+
+async function syncCommittedMealNutrition(batchId: bigint, userId: number) {
+  const days = await prisma.elevatine_import_day.findMany({
+    where: { batch_id: batchId, selected: true },
+    include: {
+      elevatine_import_item: {
+        where: { selected: true },
+        orderBy: [{ meal_order: "asc" }, { id: "asc" }]
+      }
+    }
+  });
+  await prisma.$transaction(async tx => {
+    for (const day of days) {
+      const record = await tx.daily_record.findUnique({
+        where: {
+          user_id_record_date: {
+            user_id: BigInt(userId),
+            record_date: day.record_date
+          }
+        }
+      });
+      if (!record) continue;
+      const meals = await tx.meal.findMany({
+        where: {
+          daily_record_id: record.id,
+          elevatine_batch_id: batchId,
+          source: "elevatine",
+          deleted_at: null
+        },
+        include: {
+          meal_item: {
+            where: { deleted_at: null },
+            orderBy: { id: "asc" }
+          }
+        },
+        orderBy: [{ sort_order: "asc" }, { id: "asc" }]
+      });
+      for (const meal of meals) {
+        const order = Math.max(1, Math.round(meal.sort_order / 10));
+        const imported = day.elevatine_import_item.filter(item => item.meal_order === order);
+        const available = [...meal.meal_item];
+        for (const item of imported) {
+          const matchIndex = available.findIndex(current =>
+            normalizeFoodName(current.food_name_snapshot) === normalizeFoodName(item.food_name)
+          );
+          if (matchIndex < 0) continue;
+          const [target] = available.splice(matchIndex, 1);
+          await tx.meal_item.update({
+            where: { id: target.id },
+            data: {
+              calories_snapshot: item.calories,
+              carbohydrate_snapshot: item.carbohydrate ?? new Prisma.Decimal(0),
+              protein_snapshot: item.protein ?? new Prisma.Decimal(0),
+              fat_snapshot: item.fat ?? new Prisma.Decimal(0),
+              updated_at: new Date()
+            }
+          });
+        }
+      }
+      const totals = await tx.meal_item.aggregate({
+        where: {
+          deleted_at: null,
+          meal: { daily_record_id: record.id, deleted_at: null }
+        },
+        _sum: { calories_snapshot: true }
+      });
+      await tx.daily_record.update({
+        where: { id: record.id },
+        data: {
+          meal_calories: Math.round(Number(totals._sum.calories_snapshot ?? 0)),
+          updated_at: new Date()
+        }
+      });
+    }
+  }, { timeout: 30_000 });
+}
+
+export async function enrichBatchNutrition(batchId: bigint, userId: number) {
+  const batch = await ownedBatch(batchId, userId);
+  if (!["review", "committed"].includes(batch.status)) {
+    throw new ApiError(409, "当前批次不能补全食品营养");
+  }
+  await enrichMissingBatchItems(batchId);
+  if (batch.status === "committed") {
+    await syncCommittedMealNutrition(batchId, userId);
+  }
+  return getBatchReview(batchId, userId);
 }
 
 export async function parseBatch(batchId: bigint, userId: number, retryImageId?: bigint) {
@@ -405,7 +519,9 @@ export async function patchBatch(batchId: bigint, userId: number, patch: BatchPa
           carbohydrate: item.carbohydrate === undefined ? undefined : decimal(item.carbohydrate),
           protein: item.protein === undefined ? undefined : decimal(item.protein),
           fat: item.fat === undefined ? undefined : decimal(item.fat),
-          match_status: dayId ? "matched" : undefined,
+          match_status: item.calories !== undefined && item.calories > 0
+            ? "matched"
+            : dayId ? "matched" : undefined,
           updated_at: new Date()
         }
       });
@@ -425,6 +541,16 @@ export async function commitBatch(batchId: bigint, userId: number) {
     }
   });
   if (unresolved) throw new ApiError(422, `还有 ${unresolved} 个食品详情未分配日期`);
+  const nutritionFailures = await prisma.elevatine_import_item.count({
+    where: {
+      selected: true,
+      elevatine_import_day: { batch_id: batchId, selected: true },
+      match_status: "estimate_failed"
+    }
+  });
+  if (nutritionFailures) {
+    throw new ApiError(422, `还有 ${nutritionFailures} 个食品缺少营养数据，请先补全或手工编辑后再写入`);
+  }
   await prisma.$transaction(async tx => {
     const days = await tx.elevatine_import_day.findMany({
       where: { batch_id: batchId, selected: true },
